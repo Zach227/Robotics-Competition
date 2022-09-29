@@ -46,7 +46,6 @@ void checkStall(){
           }
         }
         setTime = false;
-        Serial.print("trueee");
     }
 }
 
