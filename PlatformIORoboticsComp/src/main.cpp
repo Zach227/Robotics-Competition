@@ -1,32 +1,23 @@
 #include <Arduino.h>
-
-//information for the robot control
-int checkStallCount = 20;
-unsigned long currentTime = 0;
-unsigned long triggerTime;
-unsigned long pastRRot = 0;
-unsigned long pastLRot = 0;
-unsigned long totalRRot = 0;
-unsigned long totalLRot = 0;
-unsigned long leftCount = 0;     //Encoder value from the interrupt function LEFT
-unsigned long rightCount = 0;    //Encoder value from the interrupt function RIGHT
 //Pin Assignments
 const int interruptPinR = 3;
 const int interruptPinL = 2;
 const int motorLS = 10;
 const int motorRS = 11;
-//Adjustable speed and movement properties
-int leftDutyC = 100;
-int rightDutyC = 100;
-int encoderCountL = 0;
-int encoderCountR = 0;
-int freqSpeed = 100;
-unsigned long nowTime = 0;
-bool setTime = false;
+
+//information for the robot control
+unsigned long totalRRot = 0;       //Encoder value from the interrupt function RIGHT 
+unsigned long totalLRot = 0;        //Encoder value from the interrupt function LEFT
 bool trigger = false;
-int speedMotor = 50;
 
 void checkStall(){
+    static unsigned long nowTime = 0;
+    int freqSpeed = 100;
+    unsigned long pastRRot = 0;
+    unsigned long pastLRot = 0;
+    bool setTime = false;
+    unsigned long triggerTime = 0;
+    int checkStallCount = 20;
     if (setTime == false){        //only will happen on the initialization of the function
         nowTime = millis();
         pastRRot = totalRRot;
@@ -35,11 +26,11 @@ void checkStall(){
         Serial.println("set time");
     }
     if ((millis() - nowTime) >= (unsigned long) freqSpeed){
-        encoderCountL = (totalLRot - pastLRot);
-        encoderCountR = (totalRRot - pastRRot);
+        int encoderCountL = (totalLRot - pastLRot);
+        int encoderCountR = (totalRRot - pastRRot);
         Serial.println(encoderCountR);
         if(millis() - triggerTime >= 2000){
-          if (encoderCountL <= checkStallCount || encoderCountL <= checkStallCount){
+          if (encoderCountL <= checkStallCount || encoderCountR <= checkStallCount){
             triggerTime = millis();
             trigger = true;
             //Serial.println("trigger on");
@@ -48,6 +39,12 @@ void checkStall(){
         setTime = false;
     }
 }
+
+//Adjustable speed and movement properties
+int leftDutyC = 100;
+int rightDutyC = 100;
+unsigned long leftCount = 0;     
+unsigned long rightCount = 0; 
 
 void moveForward(int leftRotation, int rightRotation, int speedL, int speedR) {
     rightDutyC = speedR;
@@ -63,12 +60,12 @@ void moveForward(int leftRotation, int rightRotation, int speedL, int speedR) {
             Serial.println("Motor Right Stopped First");
         }
     }
-     analogWrite(motorLS, 0);
+    analogWrite(motorLS, 0);
     while (totalRRot < rightCount){           //then it will check to see if the right motor should stay on or off
         analogWrite(motorRS,rightDutyC);
         if (trigger == true){
-          leftCount = leftCount - leftRotation;
-          rightCount = rightCount - rightRotation;
+            leftCount = leftCount - leftRotation;
+            rightCount = rightCount - rightRotation;
         }
     }
     analogWrite(motorLS, 0);
