@@ -52,6 +52,7 @@ void moveForward(int leftRotation, int rightRotation, int speedL, int speedR) {
     Serial.print("Moving Forward");
     rightCount = (rightRotation + totalRRot);
     leftCount = (leftRotation + totalLRot);
+    //Serial.Print("right Count");
     while (totalLRot <= leftCount){          //turn on the motors while rotations are less than the value
         analogWrite(motorLS, leftDutyC);
         analogWrite(motorRS, rightDutyC);
@@ -61,7 +62,7 @@ void moveForward(int leftRotation, int rightRotation, int speedL, int speedR) {
         }
     }
     analogWrite(motorLS, 0);
-    while (totalRRot < rightCount){           //then it will check to see if the right motor should stay on or off
+    while (totalRRot <= rightCount){           //then it will check to see if the right motor should stay on or off
         analogWrite(motorRS,rightDutyC);
         if (trigger == true){
             leftCount = leftCount - leftRotation;
@@ -163,6 +164,14 @@ void setup() {
 }
 
 void loop() {
-  moveForward(1000, 1000, 100, 75);
-  moveForward(1000, 1000, 75, 100);
+    analogWrite(motorLS, 200);
+    analogWrite(motorRS, 200);
+    delay(2000);
+    Serial.print("Left Rotations: ");
+    Serial.println(totalLRot);
+    Serial.print("Right Rotations: ");
+    Serial.println(totalRRot);
+    analogWrite(motorLS, 0);
+    analogWrite(motorRS, 0);
+    delay(1000);
 }
