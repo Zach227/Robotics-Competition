@@ -2,76 +2,93 @@
 //Pin Assignments
 const int interruptPinR = 3;
 const int interruptPinL = 2;
-const int motorLS = 10;
-const int motorRS = 11;
+const int motorL = 10;
+const int motorR = 11;
 
 //information for the robot control
 unsigned long totalRRot = 0;       //Encoder value from the interrupt function RIGHT 
 unsigned long totalLRot = 0;        //Encoder value from the interrupt function LEFT
-bool trigger = false;
 
-void checkStall(){
-    static unsigned long nowTime = 0;
-    int freqSpeed = 100;
-    unsigned long pastRRot = 0;
-    unsigned long pastLRot = 0;
-    bool setTime = false;
-    unsigned long triggerTime = 0;
-    int checkStallCount = 20;
-    if (setTime == false){        //only will happen on the initialization of the function
-        nowTime = millis();
-        pastRRot = totalRRot;
-        pastLRot = totalLRot;
-        setTime = true;
-        Serial.println("set time");
+int measureSpeedDiffL(int target){
+    static int period = 60; //measure every period 
+    static int lastCount = 0;
+    unsigned long nowTime = millis();
+    static unsigned long nextToggle = 0;  //time set when the measurement will be take again
+    if(nowTime > nextToggle){
+        int speed = totalLRot - lastCount;
+        lastCount = totalLRot;
+        nextToggle = millis() + period;
+        return target - speed;
     }
-    if ((millis() - nowTime) >= (unsigned long) freqSpeed){
-        int encoderCountL = (totalLRot - pastLRot);
-        int encoderCountR = (totalRRot - pastRRot);
-        Serial.println(encoderCountR);
-        if(millis() - triggerTime >= 2000){
-          if (encoderCountL <= checkStallCount || encoderCountR <= checkStallCount){
-            triggerTime = millis();
-            trigger = true;
-            //Serial.println("trigger on");
-          }
-        }
-        setTime = false;
+    else{
+        return 0;
     }
 }
 
-//Adjustable speed and movement properties
-int leftDutyC = 100;
-int rightDutyC = 100;
-unsigned long leftCount = 0;     
-unsigned long rightCount = 0; 
+int measureSpeedDiffR(int target){
+    static int period = 60; //measure every period 
+    static int lastCount = 0;
+    unsigned long nowTime = millis();
+    static unsigned long nextToggle = 0;  //time set when the measurement will be take again
+    if(nowTime > nextToggle){
+        int speed = totalRRot - lastCount;
+        lastCount = totalRRot;
+        nextToggle = millis() + period;
+        return target - speed;
+    }
+    else{
+        return 0;
+    }
+}
 
-void moveForward(int leftRotation, int rightRotation, int speedL, int speedR) {
-    rightDutyC = speedR;
-    leftDutyC = speedL;
-    Serial.print("Moving Forward");
-    rightCount = (rightRotation + totalRRot);
-    leftCount = (leftRotation + totalLRot);
-    //Serial.Print("right Count");
-    while (totalLRot <= leftCount){          //turn on the motors while rotations are less than the value
-        analogWrite(motorLS, leftDutyC);
-        analogWrite(motorRS, rightDutyC);
-        if (totalRRot >= rightCount){         //this will turn off the right motor if the right side reaches the rotation count first
-            analogWrite(motorRS,0);
-            Serial.println("Motor Right Stopped First");
-        }
+int motorLS = 155;
+int motorRS = 155;
+
+void adjustSpeed(int speedL, int speedR){
+    int goalSpeedL = speedL;
+    int differenceL = measureSpeedDiffL(goalSpeedL);
+    if(differenceL > 7 && motorLS < 250){
+        motorLS = motorLS + 2; 
+        //Serial.print(motorLS);
+        //Serial.println("big change up");
     }
-    analogWrite(motorLS, 0);
-    while (totalRRot <= rightCount){           //then it will check to see if the right motor should stay on or off
-        analogWrite(motorRS,rightDutyC);
-        if (trigger == true){
-            leftCount = leftCount - leftRotation;
-            rightCount = rightCount - rightRotation;
-        }
+    else if(differenceL > 1 && motorLS < 252){
+        motorLS = motorLS + 1; 
+        //Serial.println("little change up");
     }
-    analogWrite(motorLS, 0);
-    analogWrite(motorRS,0);
-    Serial.println("Movement Completed");
+    else if(differenceL < -7 && motorLS > 20){
+        motorLS = motorLS - 2; 
+        //Serial.println("big change down");
+    }
+    else if(differenceL < -1 && motorLS > 20){
+        motorLS = motorLS - 1; 
+        //Serial.println("litte change down");
+    }
+    analogWrite(motorL, motorLS);
+
+    int goalSpeedR = speedR;
+    int differenceR = measureSpeedDiffR(goalSpeedR);
+    if(differenceR > 7 && motorRS < 250){
+        motorRS = motorRS + 2; 
+        //Serial.print(motorRS);
+        //Serial.println("big change up");
+    }
+    else if(differenceR > 1 && motorRS < 252){
+        motorRS = motorRS + 1; 
+        //Serial.println("little change up");
+    }
+    else if(differenceR < -7 && motorRS > 20){
+        motorRS = motorRS - 2; 
+        //Serial.println("big change down");
+    }
+    else if(differenceR < -1 && motorRS > 20){
+        motorRS = motorRS - 1; 
+        //Serial.println("litte change down");
+    }
+    analogWrite(motorR, motorRS);
+
+
+
 }
 
 void addRotR(){
@@ -84,26 +101,21 @@ void addRotL(){
 void setup() {
     Serial.begin(9600);
     // pin modes and interrupts
-    pinMode(motorLS, OUTPUT);
-    pinMode(motorRS, OUTPUT);
+    pinMode(motorL, OUTPUT);
+    pinMode(motorR, OUTPUT);
     pinMode(interruptPinR, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(interruptPinR), addRotR, CHANGE);
     pinMode(interruptPinL, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(interruptPinL), addRotL, CHANGE);
-    
-    Serial.println("Setup Complete");
     delay(2000);
+    Serial.println("Setup Complete");
+    totalLRot = 0;
+    totalRRot = 0;
+    analogWrite(motorR, motorRS);
+    analogWrite(motorL, motorLS);
 }
 
 void loop() {
-    analogWrite(motorLS, 255);
-    analogWrite(motorRS, 255);
-    delay(1000);
-    Serial.print("Left Rotations: ");
-    Serial.println(totalLRot);
-    Serial.print("Right Rotations: ");
-    Serial.println(totalRRot);
-    analogWrite(motorLS, 0);
-    analogWrite(motorRS, 0);
-    delay(1000);
+    //delay(30);
+    adjustSpeed(10, 10);
 }
