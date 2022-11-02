@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <HCSR04.h>
 //Pin Assignments
 const int interruptPinR = 3;
 const int interruptPinL = 2;
@@ -50,19 +51,19 @@ void adjustSpeed(int speedL, int speedR){
     if(differenceL > 7 && motorLS < 250){
         motorLS = motorLS + 2; 
         //Serial.print(motorLS);
-        //Serial.println("big change up");
+        Serial.println("big change up");
     }
     else if(differenceL > 1 && motorLS < 252){
         motorLS = motorLS + 1; 
-        //Serial.println("little change up");
+        Serial.println("little change up");
     }
     else if(differenceL < -7 && motorLS > 20){
         motorLS = motorLS - 2; 
-        //Serial.println("big change down");
+        Serial.println("big change down");
     }
     else if(differenceL < -1 && motorLS > 20){
         motorLS = motorLS - 1; 
-        //Serial.println("litte change down");
+        Serial.println("litte change down");
     }
     analogWrite(motorL, motorLS);
 
@@ -98,6 +99,40 @@ void addRotL(){
     totalLRot += 1;
 }
 
+const byte triggerPin = 6;
+const byte echoPin = 5;
+UltraSonicDistanceSensor distanceSensor(triggerPin, echoPin);
+float leftWallDistance(int target){
+    // Every 500 miliseconds, do a measurement using the sensor and print the distance in centimeters.
+    float distance = distanceSensor.measureDistanceCm();
+    if(distance != -1 && distance < 40){
+        float difference = distance - target;
+        //Serial.println(difference);
+        return difference;
+    }
+    else{
+        return 0;
+    }
+}
+
+int rightSpeed = 100;
+void ultrasonicAdjust(int target){
+    int difference = leftWallDistance(target);
+    if(difference > 2 ){
+        rightSpeed++;
+    }
+    if(difference < -2){
+        rightSpeed--;
+    }
+    if(rightSpeed > 255){
+        rightSpeed = 255;
+    }
+    if(rightSpeed < 20){
+        rightSpeed = 20;
+    }
+}
+
+
 void setup() {
     Serial.begin(9600);
     // pin modes and interrupts
@@ -116,6 +151,9 @@ void setup() {
 }
 
 void loop() {
-    //delay(30);
-    adjustSpeed(10, 10);
+    adjustSpeed(15, 15);
+    //ultrasonicAdjust(10); //keep it 10cm from the wall
+    //Serial.println(rightSpeed);
+    //analogWrite(motorL, 100);
+    //analogWrite(motorR, rightSpeed);
 }
