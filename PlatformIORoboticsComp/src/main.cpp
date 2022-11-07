@@ -5,6 +5,8 @@ const int interruptPinR = 3;
 const int interruptPinL = 2;
 const int motorL = 10;
 const int motorR = 11;
+const int buttonFront = A3;
+const int buttonBack = A4;
 
 // information for the robot control
 unsigned long totalRRot = 0; // Encoder value from the interrupt function RIGHT
@@ -153,24 +155,7 @@ void ultrasonicAdjust(int target)
     }
 }
 
-void setup() {
-    Serial.begin(9600);
-    // pin modes and interrupts
-    pinMode(motorL, OUTPUT);
-    pinMode(motorR, OUTPUT);
-    pinMode(interruptPinR, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(interruptPinR), addRotR, CHANGE);
-    pinMode(interruptPinL, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(interruptPinL), addRotL, CHANGE);
-    delay(2000);
-    Serial.println("Setup Complete");
-    totalLRot = 0;
-    totalRRot = 0;
-    analogWrite(motorR, motorRS);
-    analogWrite(motorL, motorLS);
-}
-
-void loop() {
+void ultrasonic() {
     static int speedL = 100;
     static int speedR = 100;
     float distance = distanceSensor.measureDistanceCm();
@@ -192,8 +177,97 @@ void loop() {
     }
     analogWrite(motorL, speedL);
     analogWrite(motorR, speedR);
-    // ultrasonicAdjust(10); //keep it 10cm from the wall
-    // Serial.println(rightSpeed);
-    // analogWrite(motorL, 100);
-    // analogWrite(motorR, rightSpeed);
+}
+
+void setup() {
+    Serial.begin(9600);
+    // pin modes and interrupts
+    pinMode(buttonBack, INPUT_PULLUP);
+    pinMode(buttonFront, INPUT_PULLUP);
+    pinMode(motorL, OUTPUT);
+    pinMode(motorR, OUTPUT);
+    pinMode(interruptPinR, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(interruptPinR), addRotR, CHANGE);
+    pinMode(interruptPinL, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(interruptPinL), addRotL, CHANGE);
+    delay(2000);
+    Serial.println("Setup Complete");
+    totalLRot = 0;
+    totalRRot = 0;
+    analogWrite(motorR, motorRS);
+    analogWrite(motorL, motorLS);
+}
+
+void statemachine(){
+static int state = 0;
+static int buttonFront = 0;
+static int buttonBack = 0;
+buttonFront = digitalRead(buttonFront);
+buttonBack = digitalRead(buttonBack);
+switch (state) {
+case 0:         //both buttons pressed OK
+    motorLS = 155;
+    motorRS = 159;
+    if((buttonBack == 0) && (buttonFront == 1))
+        state = 1;
+    else if((buttonBack == 1) && (buttonFront == 0))
+        state = 2;
+    else if((buttonBack == 0) && (buttonFront == 0))
+        state = 3;
+    else
+        state = 0;
+    break;
+case 1:         // the back button is not pushed increase left motor speed
+    motorLS = 160;
+    motorRS = 155;
+    
+    if((buttonBack == 0) && (buttonFront == 1))
+        state = 1;
+    else if((buttonBack == 1) && (buttonFront == 0))
+        state = 2;
+    else if((buttonBack == 0) && (buttonFront == 0))
+        state = 3;
+    else
+        state = 0;
+    break;
+case 2:             //the front button is not pushed increase right motor speed
+    motorLS = 120;
+    motorRS = 155;
+    if((buttonBack == 0) && (buttonFront == 1)) {
+        state = 1;
+    }
+    else if((buttonBack == 1) && (buttonFront == 0)) {
+        state = 2;
+    }
+    else if((buttonBack == 0) && (buttonFront == 0)) {
+        state = 3;
+    }
+    else {
+        state = 0;
+    }
+    break;
+case 3:             //both buttons not pushed increase right motor speed
+    motorLS = 100;
+    motorRS = 130;
+    if((buttonBack == 0) && (buttonFront == 1)) {
+        state = 1;
+    }
+    else if((buttonBack == 1) && (buttonFront == 0)) {
+        state = 2;
+    }
+    else if((buttonBack == 0) && (buttonFront == 0)) {
+        state = 3;
+    }
+    else {
+        state = 0;
+    }
+    break;
+}
+analogWrite(motorR, motorRS);
+analogWrite(motorL, motorLS);
+Serial.println(state);
+}
+
+void loop(){
+    statemachine();
 }
