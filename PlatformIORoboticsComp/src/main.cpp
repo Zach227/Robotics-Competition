@@ -5,6 +5,8 @@ const int interruptPinR = 3;
 const int interruptPinL = 2;
 const int motorL = 10;
 const int motorR = 11;
+const int buttonFront = A3;
+const int buttonBack = A4;
 
 // information for the robot control
 unsigned long totalRRot = 0; // Encoder value from the interrupt function RIGHT
@@ -117,12 +119,10 @@ const byte triggerPin = 6;
 const byte echoPin = 5;
 UltraSonicDistanceSensor distanceSensor(triggerPin, echoPin);
 
-float leftWallDistance(int target)
-{
+float leftWallDistance(int target){
     // Every 500 miliseconds, do a measurement using the sensor and print the distance in centimeters.
     float distance = distanceSensor.measureDistanceCm();
-    if (distance != -1 && distance < 40)
-    {
+    if (distance != -1 && distance < 40){
         float difference = distance - target;
         // Serial.println(difference);
         return difference;
@@ -155,10 +155,35 @@ void ultrasonicAdjust(int target)
     }
 }
 
-void setup()
-{
+void ultrasonic() {
+    static int speedL = 100;
+    static int speedR = 100;
+    float distance = distanceSensor.measureDistanceCm();
+    if (distance > 30)
+    {
+        speedL = 90;
+        speedR = 125;
+        
+    }
+    else if (distance < 15)
+    {
+        speedL = 150;
+        speedR = 90;
+    }
+    else
+    {
+        speedL = 100;
+        speedR = 100;
+    }
+    analogWrite(motorL, speedL);
+    analogWrite(motorR, speedR);
+}
+
+void setup() {
     Serial.begin(9600);
     // pin modes and interrupts
+    pinMode(buttonBack, INPUT_PULLUP);
+    pinMode(buttonFront, INPUT_PULLUP);
     pinMode(motorL, OUTPUT);
     pinMode(motorR, OUTPUT);
     pinMode(interruptPinR, INPUT_PULLUP);
@@ -173,30 +198,76 @@ void setup()
     analogWrite(motorL, motorLS);
 }
 
-void loop()
-{
-    static int speedL = 100;
-    static int speedR = 100;
-    float distance = distanceSensor.measureDistanceCm();
-    if (distance > 30)
-    {
-        speedL = 125;
-        speedR = 90;
-    }
-    else if (distance < 5)
-    {
-        speedL = 90;
-        speedR = 125;
-    }
+void statemachine(){
+static int state = 0;
+static int buttonFront = 0;
+static int buttonBack = 0;
+buttonFront = digitalRead(buttonFront);
+buttonBack = digitalRead(buttonBack);
+switch (state) {
+case 0:         //both buttons pressed OK
+    motorLS = 155;
+    motorRS = 159;
+    if((buttonBack == 0) && (buttonFront == 1))
+        state = 1;
+    else if((buttonBack == 1) && (buttonFront == 0))
+        state = 2;
+    else if((buttonBack == 0) && (buttonFront == 0))
+        state = 3;
     else
-    {
-        speedL = 100;
-        speedR = 100;
+        state = 0;
+    break;
+case 1:         // the back button is not pushed increase left motor speed
+    motorLS = 160;
+    motorRS = 155;
+    
+    if((buttonBack == 0) && (buttonFront == 1))
+        state = 1;
+    else if((buttonBack == 1) && (buttonFront == 0))
+        state = 2;
+    else if((buttonBack == 0) && (buttonFront == 0))
+        state = 3;
+    else
+        state = 0;
+    break;
+case 2:             //the front button is not pushed increase right motor speed
+    motorLS = 120;
+    motorRS = 155;
+    if((buttonBack == 0) && (buttonFront == 1)) {
+        state = 1;
     }
-    analogWrite(motorL, speedL);
-    analogWrite(motorR, speedR)
-    // ultrasonicAdjust(10); //keep it 10cm from the wall
-    // Serial.println(rightSpeed);
-    // analogWrite(motorL, 100);
-    // analogWrite(motorR, rightSpeed);
+    else if((buttonBack == 1) && (buttonFront == 0)) {
+        state = 2;
+    }
+    else if((buttonBack == 0) && (buttonFront == 0)) {
+        state = 3;
+    }
+    else {
+        state = 0;
+    }
+    break;
+case 3:             //both buttons not pushed increase right motor speed
+    motorLS = 100;
+    motorRS = 130;
+    if((buttonBack == 0) && (buttonFront == 1)) {
+        state = 1;
+    }
+    else if((buttonBack == 1) && (buttonFront == 0)) {
+        state = 2;
+    }
+    else if((buttonBack == 0) && (buttonFront == 0)) {
+        state = 3;
+    }
+    else {
+        state = 0;
+    }
+    break;
+}
+analogWrite(motorR, motorRS);
+analogWrite(motorL, motorLS);
+Serial.println(state);
+}
+
+void loop(){
+    statemachine();
 }
