@@ -5,8 +5,8 @@ const int interruptPinR = 3;
 const int interruptPinL = 2;
 const int motorL = 10;
 const int motorR = 11;
-const int buttonFrontPin = A3;
-const int buttonBackPin = A4;
+const int buttonFront = A3;
+const int buttonBack = A4;
 
 // information for the robot control
 unsigned long totalRRot = 0; // Encoder value from the interrupt function RIGHT
@@ -182,8 +182,8 @@ void ultrasonic() {
 void setup() {
     Serial.begin(9600);
     // pin modes and interrupts
-    pinMode(buttonBackPin, INPUT_PULLUP);
-    pinMode(buttonFrontPin, INPUT_PULLUP);
+    pinMode(buttonBack, INPUT_PULLUP);
+    pinMode(buttonFront, INPUT_PULLUP);
     pinMode(motorL, OUTPUT);
     pinMode(motorR, OUTPUT);
     pinMode(interruptPinR, INPUT_PULLUP);
@@ -198,43 +198,54 @@ void setup() {
     analogWrite(motorL, motorLS);
 }
 
-void statemachine(){
+void loop(){
 static int state = 0;
 static int buttonFront = 0;
 static int buttonBack = 0;
-buttonFront = digitalRead(buttonFrontPin);
-buttonBack = digitalRead(buttonBackPin);
-if((buttonBack == 0) && (buttonFront == 1))
-    state = 1;
-else if((buttonBack == 1) && (buttonFront == 0))
-    state = 2;
-else if((buttonBack == 0) && (buttonFront == 0))
-    state = 3;
-else
-    state = 0;
-switch (state) {
+buttonFront = digitalRead(buttonFront);
+buttonBack = digitalRead(buttonBack);
+switch (state)
+{
 case 0:         //both buttons pressed OK
     motorLS = 155;
     motorRS = 159;
+    if((buttonBack == 0) && (buttonFront == 0)){
+        state = 1;
+    }
     break;
 case 1:         // the back button is not pushed increase left motor speed
-    motorLS = 155;
+    motorLS = 160;
     motorRS = 155;
+    if(buttonBack == 1){
+        state = 0;
+    }
+    if(buttonFront == 0){
+        state = 3;
+    }
     break;
 case 2:             //the front button is not pushed increase right motor speed
     motorLS = 120;
     motorRS = 155;
+    if(buttonBack == 0){
+        state = 3;
+    }
+    if(buttonFront == 1){
+        state = 0;
+    }
     break;
 case 3:             //both buttons not pushed increase right motor speed
-    motorLS = 90;
-    motorRS = 190;
+    motorLS = 100;
+    motorRS = 130;
+    if(buttonBack == 1){
+        state = 2;
+    }
+    if(buttonFront == 1){
+        state = 1;
+    }
+    break;
+default:
     break;
 }
 analogWrite(motorR, motorRS);
 analogWrite(motorL, motorLS);
-Serial.println(state);
-}
-
-void loop(){
-    statemachine();
 }
