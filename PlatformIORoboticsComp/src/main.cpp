@@ -280,19 +280,19 @@ void SM_tick()
             currentState = STRAIGHT_PUSH_BACK_BTN;
         break;
     case STRAIGHT_PUSH_BACK_BTN:
-        if (gryo_isTurning())
+        if (/*gyro is turning input*/)
             currentState = TURN_PUSH_FRONT_BTN;
         else if (buttonBack)
             currentState = STRAIGHT_MAINTAIN;
         break;
     case STRAIGHT_PUSH_FRONT_BTN:
-        if (gyro_isTurning())
+        if (/*gyro is turning input*/)
             currentState = TURN_PUSH_FRONT_BTN;
         else if (buttonFront)
             currentState = STRAIGHT_MAINTAIN;
         break;
     case STRAIGHT_MAINTAIN:
-        if (gyro_isTurning())
+        if (/*gyro is turning input*/)
             currentState = TURN_PUSH_FRONT_BTN;
         else if (!buttonFront)
             currentState = STRAIGHT_PUSH_FRONT_BTN;
@@ -300,13 +300,13 @@ void SM_tick()
             currentState = STRAIGHT_PUSH_BACK_BTN;
         break;
     case TURN_PUSH_FRONT_BTN:
-        if (!gyro_isTurning())
+        if (/*gyro is NOT turning input*/)
             currentState = STRAIGHT_MAINTAIN;
         else if (buttonFront)
             currentState = TURN_MAINTAIN;
         break;
     case TURN_MAINTAIN:
-        if (!gyro_isTurning())
+        if (/*gyro is NOT turning input*/)
             currentState = STRAIGHT_MAINTAIN;
         else if (!buttonFront)
             currentState = TURN_PUSH_FRONT_BTN;
@@ -319,18 +319,34 @@ void SM_tick()
     case START:
         break;
     case GO_TO_WALL:
+        motorLS = 135;
+        motorRS = 150;
         break;
     case STRAIGHT_PUSH_FRONT_BTN:
+        motorLS = 110;
+        motorRS = 155;
         break;
     case STRAIGHT_PUSH_BACK_BTN:
+        motorLS = 150;
+        motorRS = 155;
         break;
     case STRAIGHT_MAINTAIN:
+        motorLS = 135;
+        motorRS = 150;
         break;
     case TURN_PUSH_FRONT_BTN:
+        motorLS = 85;
+        motorRS = 130;
         break;
     case TURN_MAINTAIN:
+        motorLS = 100;
+        motorRS = 130;
         break;
     }
+
+    analogWrite(motorR, motorRS);
+    analogWrite(motorL, motorLS);
+    Serial.println(state);
 }
 
 void loop()
