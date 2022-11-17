@@ -123,10 +123,12 @@ const byte triggerPin = 6;
 const byte echoPin = 5;
 UltraSonicDistanceSensor distanceSensor(triggerPin, echoPin);
 
-float leftWallDistance(int target){
+float leftWallDistance(int target)
+{
     // Every 500 miliseconds, do a measurement using the sensor and print the distance in centimeters.
     float distance = distanceSensor.measureDistanceCm();
-    if (distance != -1 && distance < 40){
+    if (distance != -1 && distance < 40)
+    {
         float difference = distance - target;
         // Serial.println(difference);
         return difference;
@@ -159,7 +161,8 @@ void ultrasonicAdjust(int target)
     }
 }
 
-void ultrasonic() {
+void ultrasonic()
+{
     static int speedL = 100;
     static int speedR = 100;
     float distance = distanceSensor.measureDistanceCm();
@@ -167,7 +170,6 @@ void ultrasonic() {
     {
         speedL = 90;
         speedR = 125;
-        
     }
     else if (distance < 15)
     {
@@ -183,7 +185,8 @@ void ultrasonic() {
     analogWrite(motorR, speedR);
 }
 
-void setup() {
+void setup()
+{
     Serial.begin(9600);
     // pin modes and interrupts
     pinMode(buttonBackPin, INPUT_PULLUP);
@@ -203,44 +206,154 @@ void setup() {
     setupGyro();
 }
 
-void statemachine(){
-static int state = 0;
-static int buttonFront = 0;
-static int buttonBack = 0;
-buttonFront = digitalRead(buttonFrontPin);
-buttonBack = digitalRead(buttonBackPin);
-if((buttonBack == 0) && (buttonFront == 1))
-    state = 1;
-else if((buttonBack == 1) && (buttonFront == 0))
-    state = 2;
-else if((buttonBack == 0) && (buttonFront == 0))
-    state = 3;
-else
-    state = 0;
-switch (state) {
-case 0:         //both buttons pressed OK
-    motorLS = 155;
-    motorRS = 159;
-    break;
-case 1:         // the back button is not pushed increase left motor speed
-    motorLS = 155;
-    motorRS = 155;
-    break;
-case 2:             //the front button is not pushed increase right motor speed
-    motorLS = 120;
-    motorRS = 155;
-    break;
-case 3:             //both buttons not pushed increase right motor speed
-    motorLS = 90;
-    motorRS = 190;
-    break;
+// void statemachine()
+// {
+//     static int state = 0;
+//     static int buttonFront = 0;
+//     static int buttonBack = 0;
+//     buttonFront = digitalRead(buttonFrontPin);
+//     buttonBack = digitalRead(buttonBackPin);
+//     if ((buttonBack == 0) && (buttonFront == 1))
+//         state = 1;
+//     else if ((buttonBack == 1) && (buttonFront == 0))
+//         state = 2;
+//     else if ((buttonBack == 0) && (buttonFront == 0))
+//         state = 3;
+//     else
+//         state = 0;
+//     switch (state)
+//     {
+//     case 0: // both buttons pressed OK
+//         motorLS = 155;
+//         motorRS = 159;
+//         break;
+//     case 1: // the back button is not pushed increase left motor speed
+//         motorLS = 155;
+//         motorRS = 155;
+//         break;
+//     case 2: // the front button is not pushed increase right motor speed
+//         motorLS = 120;
+//         motorRS = 155;
+//         break;
+//     case 3: // both buttons not pushed increase right motor speed
+//         motorLS = 90;
+//         motorRS = 190;
+//         break;
+//     }
+//     analogWrite(motorR, motorRS);
+//     analogWrite(motorL, motorLS);
+//     Serial.println(state);
+// }
+
+// Define SM states
+typedef enum
+{
+    START,
+    GO_TO_WALL,
+    STRAIGHT_PUSH_BACK_BTN,
+    STRAIGHT_PUSH_FRONT_BTN,
+    STRAIGHT_MAINTAIN,
+    TURN_PUSH_FRONT_BTN,
+    TURN_MAINTAIN
+} sm_state_t;
+
+// SM Variables
+sm_state_t currentState;
+
+void SM_init()
+{
+    currentState = GO_TO_WALL;
 }
-analogWrite(motorR, motorRS);
-analogWrite(motorL, motorLS);
-Serial.println(state);
+
+void SM_tick()
+{
+    // Read Values
+    static int buttonFront = 0;
+    static int buttonBack = 0;
+    buttonFront = digitalRead(buttonFrontPin);
+    buttonBack = digitalRead(buttonBackPin);
+
+    // SM Transitions
+    switch (currentState)
+    {
+    case START:
+        currentState = GO_TO_WALL;
+        break;
+    case GO_TO_WALL:
+        if (buttonFront)
+            currentState = STRAIGHT_PUSH_BACK_BTN;
+        break;
+    case STRAIGHT_PUSH_BACK_BTN:
+        if (/*gyro is turning input*/)
+            currentState = TURN_PUSH_FRONT_BTN;
+        else if (buttonBack)
+            currentState = STRAIGHT_MAINTAIN;
+        break;
+    case STRAIGHT_PUSH_FRONT_BTN:
+        if (/*gyro is turning input*/)
+            currentState = TURN_PUSH_FRONT_BTN;
+        else if (buttonFront)
+            currentState = STRAIGHT_MAINTAIN;
+        break;
+    case STRAIGHT_MAINTAIN:
+        if (/*gyro is turning input*/)
+            currentState = TURN_PUSH_FRONT_BTN;
+        else if (!buttonFront)
+            currentState = STRAIGHT_PUSH_FRONT_BTN;
+        else if (!buttonBack)
+            currentState = STRAIGHT_PUSH_BACK_BTN;
+        break;
+    case TURN_PUSH_FRONT_BTN:
+        if (/*gyro is NOT turning input*/)
+            currentState = STRAIGHT_MAINTAIN;
+        else if (buttonFront)
+            currentState = TURN_MAINTAIN;
+        break;
+    case TURN_MAINTAIN:
+        if (/*gyro is NOT turning input*/)
+            currentState = STRAIGHT_MAINTAIN;
+        else if (!buttonFront)
+            currentState = TURN_PUSH_FRONT_BTN;
+        break;
+    }
+
+    // SM Actions
+    switch (currentState)
+    {
+    case START:
+        break;
+    case GO_TO_WALL:
+        motorLS = 135;
+        motorRS = 150;
+        break;
+    case STRAIGHT_PUSH_FRONT_BTN:
+        motorLS = 110;
+        motorRS = 155;
+        break;
+    case STRAIGHT_PUSH_BACK_BTN:
+        motorLS = 150;
+        motorRS = 155;
+        break;
+    case STRAIGHT_MAINTAIN:
+        motorLS = 135;
+        motorRS = 150;
+        break;
+    case TURN_PUSH_FRONT_BTN:
+        motorLS = 85;
+        motorRS = 130;
+        break;
+    case TURN_MAINTAIN:
+        motorLS = 100;
+        motorRS = 130;
+        break;
+    }
+
+    analogWrite(motorR, motorRS);
+    analogWrite(motorL, motorLS);
+    Serial.println(state);
 }
 
 void loop(){
-    //statemachine();
+    statemachine();
     loopGyro();
 }
