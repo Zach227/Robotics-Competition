@@ -27,7 +27,7 @@ void displayAngles(){
 }
 
 
-void setup(void) {
+void setupp(void) {
   Serial.begin(9600);
   Wire.begin();  // begin I2C wire class
 
@@ -37,7 +37,7 @@ void setup(void) {
   mpu.calcOffsets(true,true);  // auto calibrate gyro and accels
     // IMU must be stationary and level during calibration
 }
-void loop() {
+void looop() {
   mpu.update();  // get new measurements from IMU
   //printGyros();  // write gyro values to serial port
   displayAngles();
