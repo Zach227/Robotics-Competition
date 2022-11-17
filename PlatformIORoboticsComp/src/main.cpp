@@ -1,5 +1,8 @@
 #include <Arduino.h>
 #include <HCSR04.h>
+#include <gyro.h>
+#include <MPU6050.h>
+#include <Wire.h>
 
 // Pin Assignments
 const int interruptPinR = 3;
@@ -7,7 +10,7 @@ const int interruptPinL = 2;
 const int motorL = 10;
 const int motorR = 11;
 const int buttonFrontPin = A3;
-const int buttonBackPin = A4;
+const int buttonBackPin = A2;
 
 // information for the robot control
 unsigned long totalRRot = 0; // Encoder value from the interrupt function RIGHT
@@ -200,6 +203,7 @@ void setup()
     totalRRot = 0;
     analogWrite(motorR, motorRS);
     analogWrite(motorL, motorLS);
+    setupGyro();
 }
 
 // void statemachine()
@@ -349,7 +353,7 @@ void SM_tick()
     Serial.println(state);
 }
 
-void loop()
-{
+void loop(){
     statemachine();
+    loopGyro();
 }
