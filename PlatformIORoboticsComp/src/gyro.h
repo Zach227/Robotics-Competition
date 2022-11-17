@@ -8,6 +8,7 @@ void loopGyro();
 
 void setupGyro();
 
+int turnStartDetect();
 
 
 #endif

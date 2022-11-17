@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <HCSR04.h>
 #include <gyro.h>
-#include <MPU6050.h>
+#include <MPU6050_light.h>
 #include <Wire.h>
 
 // Pin Assignments
@@ -272,7 +272,7 @@ void SM_tick()
     static int buttonBack = 0;
     buttonFront = digitalRead(buttonFrontPin);
     buttonBack = digitalRead(buttonBackPin);
-
+    int turn = turnStartDetect();
     // SM Transitions
     switch (currentState)
     {
@@ -284,19 +284,19 @@ void SM_tick()
             currentState = STRAIGHT_PUSH_BACK_BTN;
         break;
     case STRAIGHT_PUSH_BACK_BTN:
-        if (/*gyro is turning input*/)
+        if (turn)
             currentState = TURN_PUSH_FRONT_BTN;
         else if (buttonBack)
             currentState = STRAIGHT_MAINTAIN;
         break;
     case STRAIGHT_PUSH_FRONT_BTN:
-        if (/*gyro is turning input*/)
+        if (turn)
             currentState = TURN_PUSH_FRONT_BTN;
         else if (buttonFront)
             currentState = STRAIGHT_MAINTAIN;
         break;
     case STRAIGHT_MAINTAIN:
-        if (/*gyro is turning input*/)
+        if (turn)
             currentState = TURN_PUSH_FRONT_BTN;
         else if (!buttonFront)
             currentState = STRAIGHT_PUSH_FRONT_BTN;
@@ -304,13 +304,13 @@ void SM_tick()
             currentState = STRAIGHT_PUSH_BACK_BTN;
         break;
     case TURN_PUSH_FRONT_BTN:
-        if (/*gyro is NOT turning input*/)
+        if (/*function for detecting turn stop*/)
             currentState = STRAIGHT_MAINTAIN;
         else if (buttonFront)
             currentState = TURN_MAINTAIN;
         break;
     case TURN_MAINTAIN:
-        if (/*gyro is NOT turning input*/)
+        if (/*function for detecting turn stop*/)
             currentState = STRAIGHT_MAINTAIN;
         else if (!buttonFront)
             currentState = TURN_PUSH_FRONT_BTN;
@@ -350,10 +350,9 @@ void SM_tick()
 
     analogWrite(motorR, motorRS);
     analogWrite(motorL, motorLS);
-    Serial.println(state);
 }
 
 void loop(){
-    statemachine();
+    //SM_tick();
     loopGyro();
 }
