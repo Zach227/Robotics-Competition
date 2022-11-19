@@ -9,8 +9,8 @@ const int interruptPinR = 3;
 const int interruptPinL = 2;
 const int motorL = 10;
 const int motorR = 11;
-const int buttonFrontPin = A3;
-const int buttonBackPin = A2;
+const int buttonFrontPin = A2;
+const int buttonBackPin = A3;
 
 // information for the robot control
 unsigned long totalRRot = 0; // Encoder value from the interrupt function RIGHT
@@ -272,7 +272,8 @@ void SM_tick()
     static int buttonBack = 0;
     buttonFront = digitalRead(buttonFrontPin);
     buttonBack = digitalRead(buttonBackPin);
-    int turn = turnStartDetect();
+    int turn = turnDetect();
+    //Serial.println(turn);
     // SM Transitions
     switch (currentState)
     {
@@ -304,13 +305,13 @@ void SM_tick()
             currentState = STRAIGHT_PUSH_BACK_BTN;
         break;
     case TURN_PUSH_FRONT_BTN:
-        if (/*function for detecting turn stop*/)
+        if (!turn)
             currentState = STRAIGHT_MAINTAIN;
         else if (buttonFront)
             currentState = TURN_MAINTAIN;
         break;
     case TURN_MAINTAIN:
-        if (/*function for detecting turn stop*/)
+        if (!turn)
             currentState = STRAIGHT_MAINTAIN;
         else if (!buttonFront)
             currentState = TURN_PUSH_FRONT_BTN;
@@ -322,27 +323,27 @@ void SM_tick()
     {
     case START:
         break;
-    case GO_TO_WALL:
+    case GO_TO_WALL:        //slight turn left
         motorLS = 135;
         motorRS = 150;
         break;
-    case STRAIGHT_PUSH_FRONT_BTN:
-        motorLS = 110;
-        motorRS = 155;
+    case STRAIGHT_PUSH_FRONT_BTN:       //hard turn left
+        motorLS = 70;
+        motorRS = 115;
         break;
-    case STRAIGHT_PUSH_BACK_BTN:
+    case STRAIGHT_PUSH_BACK_BTN:        //go straight very slight left
         motorLS = 150;
         motorRS = 155;
         break;
-    case STRAIGHT_MAINTAIN:
-        motorLS = 135;
-        motorRS = 150;
+    case STRAIGHT_MAINTAIN:             //straight with left
+        motorLS = 95;
+        motorRS = 110;
         break;
-    case TURN_PUSH_FRONT_BTN:
-        motorLS = 85;
-        motorRS = 130;
+    case TURN_PUSH_FRONT_BTN:               //hard left
+        motorLS = 55;
+        motorRS = 80;
         break;
-    case TURN_MAINTAIN:
+    case TURN_MAINTAIN:                 //left turn
         motorLS = 100;
         motorRS = 130;
         break;
@@ -350,9 +351,10 @@ void SM_tick()
 
     analogWrite(motorR, motorRS);
     analogWrite(motorL, motorLS);
+    Serial.println(currentState);
 }
 
 void loop(){
-    //SM_tick();
-    loopGyro();
+    SM_tick();
+    //loopGyro();
 }

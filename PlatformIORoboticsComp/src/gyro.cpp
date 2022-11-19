@@ -8,34 +8,41 @@
 MPU6050 mpu(Wire);  // class constructor for mpu
 
 void printGyros(){
-  float gyroX = mpu.getGyroX();
-  float gyroY = mpu.getGyroY();
-  float gyroZ = mpu.getGyroZ();
-  Serial.print(gyroX);
+  //float gyroX = mpu.getGyroX();
+  //float gyroY = mpu.getGyroY();
+  float gyroZ = mpu.getAccAngleX();
+  //Serial.print(gyroX);
   Serial.print(",");
-  Serial.print(gyroY);
+  //Serial.print(gyroY);
   Serial.print(",");
   Serial.print(gyroZ); 
   Serial.println("");  
   delay(500);
 }
 void displayAngles(){
-  float a = mpu.getAngleZ();
+  float a = mpu.getGyroZ();
   Serial.println(a);
 
 }
 
-int turnStartDetect(bool reset){
-  float angleZ = mpu.getAngleZ();
-  static float previousAngleZ = mpu.getAngleZ();
-  if(reset)
-    previousAngleZ = mpu.getAngleZ();
-  if(angleZ - previousAngleZ >= 7){
+int turnDetect(){
+  mpu.update();
+  float angularSpeedZ = mpu.getGyroZ();
+  //Serial.println(angularSpeedZ);
+  if(angularSpeedZ >= 7){
     return 1;
   }
   else
     return 0;
 }
+
+float getAngle(bool reset){
+  if(reset)
+    mpu.calcOffsets(true, true);
+  float angleZ = mpu.getAngleZ();
+  return angleZ;
+}
+
 
 void setupGyro(void) {
   Serial.begin(9600);
@@ -54,10 +61,9 @@ void loopGyro() {
   mpu.update();  // get new measurements from IMU
   //printGyros();  // write gyro values to serial port
   //displayAngles();
-  int a = turnStartDetect(false);
+  int a = turnDetect();
   if(a){
     Serial.println("TURN");
-    turnStartDetect(true);
   }
   //printAccels();  // write accels to serial port
 }
