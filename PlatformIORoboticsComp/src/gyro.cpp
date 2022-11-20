@@ -37,9 +37,12 @@ int turnDetect(){
 }
 
 float getAngle(bool reset){
+  static float angleZ = 0;
+  static float angleOffset = 0;
   if(reset)
-    mpu.calcOffsets(true, true);
-  float angleZ = mpu.getAngleZ();
+    angleOffset = mpu.getAngleZ();
+  float angleReading = mpu.getAngleZ();
+  angleZ = angleReading - angleOffset;
   return angleZ;
 }
 
@@ -52,6 +55,7 @@ void setupGyro(void) {
   mpu.begin();
   delay(1000);
   mpu.calcOffsets(true,true);  // auto calibrate gyro and accels
+  getAngle(true);
     // IMU must be stationary and level during calibration
 }
 
@@ -61,10 +65,6 @@ void loopGyro() {
   mpu.update();  // get new measurements from IMU
   //printGyros();  // write gyro values to serial port
   //displayAngles();
-  int a = turnDetect();
-  if(a){
-    Serial.println("TURN");
-  }
   //printAccels();  // write accels to serial port
 }
 
