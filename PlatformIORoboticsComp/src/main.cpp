@@ -4,6 +4,7 @@
 #include <MPU6050_light.h>
 #include <Wire.h>
 
+#define SPEED_TIME_MAX 50
 // Pin Assignments
 const int interruptPinR = 3;
 const int interruptPinL = 2;
@@ -253,6 +254,7 @@ typedef enum
     STRAIGHT_PUSH_BACK_BTN,
     STRAIGHT_PUSH_FRONT_BTN,
     STRAIGHT_MAINTAIN,
+    SUPER_SPEED,
     TURN_PUSH_FRONT_BTN,
     TURN_MAINTAIN
 } sm_state_t;
@@ -270,6 +272,7 @@ void SM_tick()
     // Read Values
     static int buttonFront = 0;
     static int buttonBack = 0;
+    static int speedTimer = 0;
     buttonFront = digitalRead(buttonFrontPin);
     buttonBack = digitalRead(buttonBackPin);
     int turn = turnDetect();
@@ -296,6 +299,10 @@ void SM_tick()
         else if (buttonFront)
             currentState = STRAIGHT_MAINTAIN;
         break;
+    case SUPER_SPEED:
+        if(speedTimer >= SPEED_TIME_MAX):
+            currentState = STRAIGHT_MAINTAIN;
+        break;
     case STRAIGHT_MAINTAIN:
         if (turn)
             currentState = TURN_PUSH_FRONT_BTN;
@@ -311,10 +318,10 @@ void SM_tick()
             currentState = TURN_MAINTAIN;
         break;
     case TURN_MAINTAIN:
-        if (!turn)
-            currentState = STRAIGHT_MAINTAIN;
-        else if (!buttonFront)
-            currentState = TURN_PUSH_FRONT_BTN;
+        if (!turn){
+            currentState = SUPER_SPEED;
+            speedTimer = 0;
+        }            
         break;
     }
 
@@ -338,6 +345,11 @@ void SM_tick()
     case STRAIGHT_MAINTAIN:             //straight with left
         motorLS = 95;
         motorRS = 110;
+        break;
+    case SUPER_SPEED:             //super straight
+        motorLS = 230;
+        motorRS = 255;
+        speedTimer++;
         break;
     case TURN_PUSH_FRONT_BTN:               //hard left
         motorLS = 55;
