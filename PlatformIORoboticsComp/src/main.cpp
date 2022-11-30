@@ -49,6 +49,7 @@ public:
     } 
 
     int readIR(){
+        digitalWrite(light,HIGH);
         int value = analogRead(reciever) - IRBias;
         return value;
     }
@@ -247,4 +248,5 @@ void looop(){
 
 void loop(){
     Serial.println(front.readIR());
+    Serial.println(back.readIR());
 }
