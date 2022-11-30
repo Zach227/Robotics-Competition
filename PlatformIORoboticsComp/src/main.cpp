@@ -3,14 +3,17 @@
 #include <gyro.h>
 #include <MPU6050_light.h>
 #include <Wire.h>
-
 // Pin Assignments
 const int interruptPinR = 3;
 const int interruptPinL = 2;
 const int motorL = 10;
 const int motorR = 11;
-const int buttonFrontPin = A2;
-const int buttonBackPin = A3;
+const int IRFront = A6;
+const int IRlightF = 5;
+const int IRBack = A7;
+const int IRlightB = 6;
+const int button = A1;
+
 
 // information for the robot control
 unsigned long totalRRot = 0; // Encoder value from the interrupt function RIGHT
@@ -18,6 +21,33 @@ unsigned long totalLRot = 0; // Encoder value from the interrupt function LEFT
 
 int motorLS = 100;
 int motorRS = 100;
+int frontIRBias = 100;
+int backIRBias = 100;
+
+void calibrateIR(){ 
+    int buttonValue = digitalRead(button);
+    while(buttonValue){
+        buttonValue = digitalRead(button);
+        Serial.println("waiting");
+        delay(100);
+    }
+    int frontBias =0;
+    int backBias = 0;
+    digitalWrite(IRBack, LOW);
+    digitalWrite(IRFront, LOW);
+    for (int i = 0; i < 10; i++)
+    {
+        frontBias = frontBias + analogRead(IRFront);
+        backBias = backBias + analogRead(IRBack);
+        delay(30);
+    }
+    frontIRBias = frontBias/10;
+    backIRBias = backBias/10;    
+    Serial.print("Calibration complete. Bias set to (F, B): ");
+    Serial.print(frontIRBias);
+    Serial.print(", ");
+    Serial.println(backIRBias);
+} 
 
 bool checkStall(){
   static bool setTime = false;
@@ -80,8 +110,9 @@ void setup()
 {
     Serial.begin(9600);
     // pin modes and interrupts
-    pinMode(buttonBackPin, INPUT_PULLUP);
-    pinMode(buttonFrontPin, INPUT_PULLUP);
+    pinMode(button, INPUT_PULLUP);      //should be 0V on press and 5v on no press
+    pinMode(IRlightB, OUTPUT);
+    pinMode(IRlightF, OUTPUT);
     pinMode(motorL, OUTPUT);
     pinMode(motorR, OUTPUT);
     pinMode(interruptPinR, INPUT_PULLUP);
@@ -93,6 +124,7 @@ void setup()
     totalLRot = 0;
     totalRRot = 0;
     setupGyro();
+    calibrateIR();
 }
 
 // Define SM states
@@ -166,23 +198,23 @@ void SM_tick()
     case START:
         break;
     case GO_TO_WALL:        //slight turn left
-        motorLS = 95;
-        motorRS = 110;
+        motorLS = 40;
+        motorRS = 90;
         break;
     case STRAIGHT_MAINTAIN:             //straight with left
-        motorLS = 90;
-        motorRS = 110;
+        motorLS = 40;
+        motorRS = 90;
         break;
     case TURN_MAINTAIN:                 //left turn
-        motorLS = 50;
+        motorLS = 40;
         motorRS = 110;
         break;
     case TURN_COMING:
-        motorLS = 60;
+        motorLS = 40;
         motorRS = 110;
     case TURN_FINISH:
-        motorLS = 100;
-        motorRS = 107;
+        motorLS = 40;
+        motorRS = 90;
     }
 
     analogWrite(motorR, motorRS);
@@ -190,14 +222,15 @@ void SM_tick()
     Serial.println(currentState);
 }
 
-void loop(){
+void looop(){
     SM_tick();
     if(checkStall()){
         /*back up and try again*/
     }
-    /* Serial.print("left rotations:");
-    Serial.println(totalLRot);
-    Serial.print("Right rotations:");
-    Serial.println(totalRRot); */
     loopGyro();
+}
+
+void loop(){
+    Serial.println(analogRead(IRFront));
+    delay(100);
 }
