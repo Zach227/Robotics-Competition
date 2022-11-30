@@ -8,12 +8,11 @@ const int interruptPinR = 3;
 const int interruptPinL = 2;
 const int motorL = 10;
 const int motorR = 11;
-const int IRFront = A6;
-const int IRlightF = 5;
-const int IRBack = A7;
-const int IRlightB = 6;
+// const int IRFront = A6;
+// const int IRlightF = 5;
+// const int IRBack = A7;
+// const int IRlightB = 6;
 const int button = A1;
-
 
 // information for the robot control
 unsigned long totalRRot = 0; // Encoder value from the interrupt function RIGHT
@@ -21,33 +20,42 @@ unsigned long totalLRot = 0; // Encoder value from the interrupt function LEFT
 
 int motorLS = 100;
 int motorRS = 100;
-int frontIRBias = 100;
-int backIRBias = 100;
 
-void calibrateIR(){ 
-    int buttonValue = digitalRead(button);
-    while(buttonValue){
-        buttonValue = digitalRead(button);
-        Serial.println("waiting");
-        delay(100);
+class IRLight
+{
+public:
+    int reciever;
+    int light;
+    IRLight(int pinRec, int pinLight) { // Constructor with parameters
+        reciever = pinRec;
+        light = pinLight;
     }
-    int frontBias =0;
-    int backBias = 0;
-    digitalWrite(IRBack, LOW);
-    digitalWrite(IRFront, LOW);
-    for (int i = 0; i < 10; i++)
-    {
-        frontBias = frontBias + analogRead(IRFront);
-        backBias = backBias + analogRead(IRBack);
-        delay(30);
+    void setup(){
+        pinMode(light, OUTPUT);
     }
-    frontIRBias = frontBias/10;
-    backIRBias = backBias/10;    
-    Serial.print("Calibration complete. Bias set to (F, B): ");
-    Serial.print(frontIRBias);
-    Serial.print(", ");
-    Serial.println(backIRBias);
-} 
+    int IRBias = 100;
+
+    void calibrateIR(){ 
+        int bias = 0;
+        digitalWrite(light, LOW);
+        for (int i = 0; i < 10; i++)
+        {
+            bias = bias + analogRead(reciever);
+            delay(30);
+        }
+        IRBias = bias/10;    
+        Serial.print("Calibration complete. Bias set to (F, B): ");
+        Serial.println(IRBias);
+    } 
+
+    int readIR(){
+        int value = analogRead(reciever) - IRBias;
+        return value;
+    }
+
+};
+IRLight front(A6,5);
+IRLight back(A7, 6);
 
 bool checkStall(){
   static bool setTime = false;
@@ -111,8 +119,8 @@ void setup()
     Serial.begin(9600);
     // pin modes and interrupts
     pinMode(button, INPUT_PULLUP);      //should be 0V on press and 5v on no press
-    pinMode(IRlightB, OUTPUT);
-    pinMode(IRlightF, OUTPUT);
+    front.setup();
+    back.setup();
     pinMode(motorL, OUTPUT);
     pinMode(motorR, OUTPUT);
     pinMode(interruptPinR, INPUT_PULLUP);
@@ -124,7 +132,14 @@ void setup()
     totalLRot = 0;
     totalRRot = 0;
     setupGyro();
-    calibrateIR();
+    int buttonValue = digitalRead(button);
+    while(buttonValue){
+        buttonValue = digitalRead(button);
+        Serial.println("waiting");
+        delay(100);
+    }
+    front.calibrateIR();
+    back.calibrateIR();
 }
 
 // Define SM states
@@ -231,6 +246,5 @@ void looop(){
 }
 
 void loop(){
-    Serial.println(analogRead(IRFront));
-    delay(100);
+    Serial.println(front.readIR());
 }

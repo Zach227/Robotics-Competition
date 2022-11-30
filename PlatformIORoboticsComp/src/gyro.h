@@ -1,5 +1,5 @@
 #ifndef GYRO
-#define GRYO
+#define GYRO
 
 #include <Arduino.h>
 
