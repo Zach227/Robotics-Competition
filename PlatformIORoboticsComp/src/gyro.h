@@ -10,5 +10,7 @@ void setupGyro();
 
 int turnDetect();
 
+float getAngle(bool reset);
+
 
 #endif
