@@ -5,7 +5,7 @@
 #include <MPU6050_light.h>
 #include <Wire.h>
 
-#define alphaTurn 0.8
+#define alphaTurn 0.75
 #define UpperAngularSpeed 25
 
 #define alphaNot 0.1
@@ -17,8 +17,13 @@ int turnDetect(){
   mpu.update();
   static float angularSpeedZ = 0;
   float raw = mpu.getGyroZ();
-  angularSpeedZ = (angularSpeedZ*alphaTurn) + raw*(1-alphaTurn);
-  //Serial.println(angularSpeedZ);
+  if (raw > -4) {
+      angularSpeedZ = (angularSpeedZ*alphaTurn) + raw*(1-alphaTurn);
+  }
+  Serial.print(">raw: ");
+  Serial.println(raw);
+  Serial.print(">Angular Speed: ");
+  Serial.println(angularSpeedZ);
   if(angularSpeedZ >= UpperAngularSpeed){
     return 1;
   }
@@ -30,7 +35,13 @@ int notTurning(){
   mpu.update();
   static float angularSpeedZ = 0;
   float raw = mpu.getGyroZ();
-  angularSpeedZ = (angularSpeedZ*alphaNot) + raw*(1-alphaNot);
+  if (raw > -4) {
+      angularSpeedZ = (angularSpeedZ*alphaNot) + raw*(1-alphaNot);
+  }
+  Serial.print(">N raw: ");
+  Serial.println(raw);
+  Serial.print(">N Angular Speed: ");
+  Serial.println(angularSpeedZ);
   if(angularSpeedZ <= LowerAngularSpeed){
     return 1;
   }
