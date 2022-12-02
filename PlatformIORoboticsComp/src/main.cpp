@@ -3,7 +3,9 @@
 #include <gyro.h>
 #include <MPU6050_light.h>
 #include <Wire.h>
-#define SPEED_MAX_TIME 10
+#define SPEED_MAX_TIME 200
+#define UpperSpeedThreshold 15
+#define LowerSpeedThreshold 3
 // Pin Assignments
 const int interruptPinR = 3;
 const int interruptPinL = 2;
@@ -19,8 +21,8 @@ const int button = A1;
 unsigned long totalRRot = 0; // Encoder value from the interrupt function RIGHT
 unsigned long totalLRot = 0; // Encoder value from the interrupt function LEFT
 
-int motorLS = 100;
-int motorRS = 100;
+int motorLS = 0;
+int motorRS = 0;
 
 class IRLight
 {
@@ -50,22 +52,34 @@ public:
     } 
 
     int readIR(){
+        //digitalWrite(light, HIGH);
         int value = analogRead(reciever) - IRBias;
+        //Serial.print("IR value");
+        //Serial.println(value);
         return value;
+    }
+    int start(){
+        digitalWrite(light, LOW);
+        if(readIR() > 100){
+            Serial.println("go");
+            return 1;
+        }
+        else
+            return 0;
+        //digitalWrite(light, HIGH);
     }
 
 };
 IRLight front(A6,5);
 IRLight back(A7, 6);
 
-bool checkStall(){
+int checkStall(){
   static bool setTime = false;
   static unsigned long nowTime = 0;
   static unsigned long pastRRot = 0;
   static unsigned long pastLRot = 0;
   static int triggerTime = 0; 
   static unsigned long freqSpeed = 200;
-  static int checkStallCount = 1;
 
   if (setTime == false){        //only will happen on the initialization of the function
         nowTime = millis();
@@ -76,34 +90,16 @@ bool checkStall(){
    if ((millis() - nowTime)>= freqSpeed){
         int encoderCountL = (totalLRot - pastLRot);
         int encoderCountR = (totalRRot - pastRRot);
-        /*Serial.print("right: ");
-        Serial.println(encoderCountR);
-        Serial.print("left: ");
-        Serial.println(encoderCountL);
-        Serial.print("time since trigger");
-        Serial.println(millis() - triggerTime);*/
         if(millis() - triggerTime >= 1000){;
           setTime = false;
-          if (encoderCountL <= checkStallCount){
-            triggerTime = millis();
-            Serial.println("triggered L");
-            return true;
-          }
-          else if(encoderCountR <= checkStallCount){
-            triggerTime = millis();
-            Serial.println("triggered R");
-            return true;
-          }
-          else{
-            return false;
-          }
+          int averageCount  =(encoderCountL + encoderCountR)/2;
+          Serial.print(">Average Count:");
+          Serial.println(averageCount);
+          return averageCount;
         }
-        else
-            return false;
     }
-    else{
-        return false;
-    }
+    else
+        return UpperSpeedThreshold - 1;
 }
 
 void addRotR()
@@ -113,6 +109,110 @@ void addRotR()
 void addRotL()
 {
     totalLRot += 1;
+}
+
+// Define SM states
+typedef enum
+{
+    WAIT,
+    START,
+    SUPER_SPEED,
+    STRAIGHT_MAINTAIN,
+    TURN_MAINTAIN,
+    STOP
+} sm_state_t;
+
+// SM Variables
+sm_state_t currentState;
+
+void SM_init()
+{
+    currentState = WAIT;
+}
+
+void SM_tick()
+{
+    // Read Values
+    static unsigned long pastTime = 0;
+    static int speedTimer = 0;
+    static int start = 0;
+    int turn = turnDetect();
+    int notTurn = notTurning();
+    int buttonValue = digitalRead(button);
+    if(!buttonValue){
+        currentState = STOP;
+    }
+    // SM Transitions
+    switch (currentState)
+    {
+    case WAIT:
+        start = front.start();
+        if(start)
+            currentState = START;
+        break;
+    case START:
+        if (turn)
+            currentState = TURN_MAINTAIN;
+        break;
+    case STRAIGHT_MAINTAIN:
+        if (turn)
+            currentState = TURN_MAINTAIN;
+        break;
+    case TURN_MAINTAIN:
+        if (notTurn){
+            currentState = SUPER_SPEED;
+            pastTime = millis();
+        }
+        break;
+    case SUPER_SPEED:
+        speedTimer = millis() - pastTime;
+        if(speedTimer >= SPEED_MAX_TIME){
+            currentState = STRAIGHT_MAINTAIN;
+        }
+        break;
+    }
+
+    // SM Actions
+    switch (currentState)
+    {
+    case WAIT:
+        motorLS = 0;
+        motorRS = 0;
+        break;
+    case START:
+        motorLS = 90;
+        motorRS = 110;
+        break;
+    case STRAIGHT_MAINTAIN:             //straight with left
+        motorLS = 60;
+        motorRS = 80;
+        if(checkStall() > UpperSpeedThreshold){
+            motorLS = 40;
+            motorRS = 60;
+        }
+        if(checkStall() < LowerSpeedThreshold){
+            motorLS = 90;
+            motorRS = 110;
+        }
+        break;
+    case TURN_MAINTAIN:                 //left turn
+        motorLS = 40;
+        motorRS = 90;
+        break;
+    case SUPER_SPEED:
+        motorLS = 248;
+        motorRS = 255;
+        break;
+    case STOP:
+        motorLS = 0;
+        motorRS = 0;
+        break;
+    }
+
+    analogWrite(motorR, motorRS);
+    analogWrite(motorL, motorLS);
+    Serial.print(">State:");
+    Serial.println(currentState);
 }
 
 void setup()
@@ -128,11 +228,10 @@ void setup()
     attachInterrupt(digitalPinToInterrupt(interruptPinR), addRotR, CHANGE);
     pinMode(interruptPinL, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(interruptPinL), addRotL, CHANGE);
-    delay(2000);
-    Serial.println("Setup Complete");
     totalLRot = 0;
     totalRRot = 0;
     setupGyro();
+    SM_init();
     int buttonValue = digitalRead(button);
     while(buttonValue){
         buttonValue = digitalRead(button);
@@ -141,123 +240,19 @@ void setup()
     }
     front.calibrateIR();
     back.calibrateIR();
+    Serial.println("Setup Complete");
 }
 
-// Define SM states
-typedef enum
-{
-    START,
-    GO_TO_WALL,
-    SUPER_SPEED,
-    STRAIGHT_MAINTAIN,
-    TURN_COMING,
-    TURN_MAINTAIN,
-    TURN_FINISH
-} sm_state_t;
-
-// SM Variables
-sm_state_t currentState;
-
-void SM_init()
-{
-    currentState = GO_TO_WALL;
-}
-
-void SM_tick()
-{
-    // Read Values
-    static int speedTimer = 0;
-    int turn = turnDetect();
-    float angle = getAngle(false);
-    static unsigned long pastLRotation = 0;
-    int rotationLDifference = totalLRot - pastLRotation;
-    //Serial.println(turn);
-    // SM Transitions
-    switch (currentState)
-    {
-    case START:
-        currentState = GO_TO_WALL;
-        break;
-    case GO_TO_WALL:
-            currentState = STRAIGHT_MAINTAIN;
-        break;
-    case STRAIGHT_MAINTAIN:
-        if(rotationLDifference > 175)//track long length is 275 rotations
-            currentState = TURN_COMING;
-        if (turn)
-            currentState = TURN_MAINTAIN;
-        break;
-    case TURN_COMING:
-        if(turn){
-            currentState = TURN_MAINTAIN;
-        }
-        break;
-    case TURN_MAINTAIN:
-        if (angle >= 160){
-            currentState = TURN_FINISH;
-        }
-        if (!turn){
-            currentState = STRAIGHT_MAINTAIN;
-            pastLRotation = totalLRot;
-            getAngle(true);
-        }
-        break;
-    case TURN_FINISH:
-        if(!turn){
-            currentState = SUPER_SPEED;
-            pastLRotation = totalLRot;
-            getAngle(true);
-        }
-        break;
-    case SUPER_SPEED:
-        if(speedTimer >= SPEED_MAX_TIME){
-            currentState = STRAIGHT_MAINTAIN;
-            speedTimer = 0;
-        }
-        break;
-    }
-
-    // SM Actions
-    switch (currentState)
-    {
-    case START:
-        break;
-    case GO_TO_WALL:        //slight turn left
-        motorLS = 40;
-        motorRS = 90;
-        break;
-    case STRAIGHT_MAINTAIN:             //straight with left
-        motorLS = 40;
-        motorRS = 90;
-        break;
-    case TURN_MAINTAIN:                 //left turn
-        motorLS = 40;
-        motorRS = 110;
-        break;
-    case TURN_COMING:
-        motorLS = 40;
-        motorRS = 110;
-        break;
-    case TURN_FINISH:
-        motorLS = 40;
-        motorRS = 90;
-        break;
-    case SUPER_SPEED:
-        motorLS = 220;
-        motorRS = 255;
-        speedTimer ++;
-        break;
-    }
-
-    analogWrite(motorR, motorRS);
-    analogWrite(motorL, motorLS);
-    Serial.println(currentState);
-}
-
-void loop(){
+void looop(){
     SM_tick();
     if(checkStall()){
         /*back up and try again*/
     }
     loopGyro();
+}
+
+void loop(){
+    checkStall();
+    analogWrite(motorL, 100);
+    analogWrite(motorR, 100);
 }

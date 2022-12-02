@@ -5,31 +5,33 @@
 #include <MPU6050_light.h>
 #include <Wire.h>
 
+#define alphaTurn 0.8
+#define UpperAngularSpeed 25
+
+#define alphaNot 0.1
+#define LowerAngularSpeed 10
+
 MPU6050 mpu(Wire);  // class constructor for mpu
-
-void printGyros(){
-  //float gyroX = mpu.getGyroX();
-  //float gyroY = mpu.getGyroY();
-  float gyroZ = mpu.getAccAngleX();
-  //Serial.print(gyroX);
-  Serial.print(",");
-  //Serial.print(gyroY);
-  Serial.print(",");
-  Serial.print(gyroZ); 
-  Serial.println("");  
-  delay(500);
-}
-void displayAngles(){
-  float a = mpu.getGyroZ();
-  Serial.println(a);
-
-}
 
 int turnDetect(){
   mpu.update();
-  float angularSpeedZ = mpu.getGyroZ();
+  static float angularSpeedZ = 0;
+  float raw = mpu.getGyroZ();
+  angularSpeedZ = (angularSpeedZ*alphaTurn) + raw*(1-alphaTurn);
   //Serial.println(angularSpeedZ);
-  if(angularSpeedZ >= 7){
+  if(angularSpeedZ >= UpperAngularSpeed){
+    return 1;
+  }
+  else
+    return 0;
+}
+
+int notTurning(){
+  mpu.update();
+  static float angularSpeedZ = 0;
+  float raw = mpu.getGyroZ();
+  angularSpeedZ = (angularSpeedZ*alphaNot) + raw*(1-alphaNot);
+  if(angularSpeedZ <= LowerAngularSpeed){
     return 1;
   }
   else
@@ -55,17 +57,8 @@ void setupGyro(void) {
     // IMU must be stationary and level during calibration
 }
 
-
-
 void loopGyro() {
   mpu.update();  // get new measurements from IMU
-  //printGyros();  // write gyro values to serial port
-  //displayAngles();
-  int a = turnDetect();
-  if(a){
-    Serial.println("TURN");
-  }
-  //printAccels();  // write accels to serial port
 }
 
 
