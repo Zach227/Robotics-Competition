@@ -5,6 +5,7 @@
 #include <MPU6050_light.h>
 #include <Wire.h>
 
+#define GATE 60
 #define alphaTurn 0.75
 #define UpperAngularSpeed 25
 
@@ -13,17 +14,25 @@
 
 MPU6050 mpu(Wire);  // class constructor for mpu
 
+float getAngle(bool reset){
+  if(reset)
+    mpu.calcOffsets(true, true);
+  float angleZ = mpu.getAngleZ();
+  return angleZ;
+}
+
 int turnDetect(){
   mpu.update();
   static float angularSpeedZ = 0;
   float raw = mpu.getGyroZ();
-  if (raw > -4) {
+  if (raw > -4 && raw - angularSpeedZ < GATE) {
       angularSpeedZ = (angularSpeedZ*alphaTurn) + raw*(1-alphaTurn);
   }
   Serial.print(">raw: ");
   Serial.println(raw);
   Serial.print(">Angular Speed: ");
   Serial.println(angularSpeedZ);
+  getAngle(true);
   if(angularSpeedZ >= UpperAngularSpeed){
     return 1;
   }
@@ -33,27 +42,25 @@ int turnDetect(){
 
 int notTurning(){
   mpu.update();
+  float angle = getAngle(false);
   static float angularSpeedZ = 0;
   float raw = mpu.getGyroZ();
-  if (raw > -4) {
+  if (raw > -4 && raw - angularSpeedZ < GATE) {
       angularSpeedZ = (angularSpeedZ*alphaNot) + raw*(1-alphaNot);
   }
   Serial.print(">N raw: ");
   Serial.println(raw);
   Serial.print(">N Angular Speed: ");
   Serial.println(angularSpeedZ);
-  if(angularSpeedZ <= LowerAngularSpeed){
-    return 1;
+  if(angle > 150){
+    if(angularSpeedZ <= LowerAngularSpeed){
+      return 1;
+    }
+    else
+      return 0;
   }
   else
     return 0;
-}
-
-float getAngle(bool reset){
-  if(reset)
-    mpu.calcOffsets(true, true);
-  float angleZ = mpu.getAngleZ();
-  return angleZ;
 }
 
 

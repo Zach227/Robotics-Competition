@@ -135,10 +135,11 @@ void SM_tick()
     static int speedTimer = 0;
     static int start = 0;
     int turn = turnDetect();
-    int notTurn = notTurning();
+    static int notTurn = notTurning();
+    
     int buttonValue = digitalRead(button);
     if(!buttonValue){
-        currentState = STOP;
+        start = true;
     }
     // SM Transitions
     switch (currentState)
@@ -146,28 +147,31 @@ void SM_tick()
     case STOP:
         break;
     case WAIT:
-        start = front.start();
+        //start = front.start();
         if(start){
             frontServo.write(165);
             backServo.write(5);
-            delay(250);
+            delay(230);
             currentState = START;
         }
         break;
     case START:
+        //turn = turnDetect();
         if (turn)
             currentState = TURN_MAINTAIN;
         break;
     case STRAIGHT_MAINTAIN:
+        turn = turnDetect();
         if (turn)
             currentState = TURN_MAINTAIN;
         break;
     case TURN_MAINTAIN:
+        notTurn = notTurning();
         if (notTurn){
             speedTimer = millis() - pastTime;
             if(speedTimer > 1000){
                 pastTime = millis();
-                //currentState = SUPER_SPEED;
+                currentState = SUPER_SPEED;
             }
         }
         break;
@@ -188,8 +192,8 @@ void SM_tick()
         motorRS = 0;
         break;
     case START:
-        motorLS = 80;
-        motorRS = 110;
+        motorLS = 70;
+        motorRS = 100;
         break;
     case STRAIGHT_MAINTAIN:             //straight with left
         motorLS = 40;
