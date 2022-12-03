@@ -69,13 +69,10 @@ void setupGyro(void) {
   mpu.begin();
   delay(1000);
   mpu.calcOffsets(true,true);  // auto calibrate gyro and accels
-  getAngle(true);
+  getAngle(2);
     // IMU must be stationary and level during calibration
 }
 
 void loopGyro() {
   mpu.update();  // get new measurements from IMU
 }
-
-
-
