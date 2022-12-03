@@ -1,8 +1,6 @@
 #include <Arduino.h>
 //#include <HCSR04.h>
 #include <gyro.h>
-#include <MPU6050_light.h>
-#include <Wire.h>
 #include <Servo.h>
 
 #define SPEED_MAX_TIME 100
@@ -120,7 +118,7 @@ int differenceCount(){
         int encoderCountL = (totalLRot - pastLRot);
         int encoderCountR = (totalRRot - pastRRot);
         setTime = false;
-        int averageCount  = (encoderCountL + encoderCountR)/2;
+        int averageCount  = encoderCountR - encoderCountL;
         Serial.print(">Average Count:");
         Serial.println(averageCount);
         return averageCount;
@@ -281,10 +279,10 @@ void setup()
     pinMode(ledyellow, OUTPUT);
     pinMode(motorL, OUTPUT);
     pinMode(motorR, OUTPUT);
-    pinMode(interruptPinR, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(interruptPinR), addRotR, CHANGE);
-    pinMode(interruptPinL, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(interruptPinL), addRotL, CHANGE);
+    // pinMode(interruptPinR, INPUT_PULLUP);
+    // attachInterrupt(digitalPinToInterrupt(interruptPinR), addRotR, CHANGE);
+    // pinMode(interruptPinL, INPUT_PULLUP);
+    // attachInterrupt(digitalPinToInterrupt(interruptPinL), addRotL, CHANGE);
     totalLRot = 0;
     totalRRot = 0;
     setupGyro();
@@ -307,5 +305,7 @@ void setup()
 
 void loop(){
     SM_tick();
+    //Serial.print(">Difference: ");
+    //Serial.println(differenceCount());
     loopGyro();
 }
