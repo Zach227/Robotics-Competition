@@ -15,6 +15,9 @@ const int motorL = 5;
 const int motorR = 11;
 const int button = A1;
 
+const int ledblue = 7;
+const int ledyellow = 8;
+
 // information for the robot control
 unsigned long totalRRot = 0; // Encoder value from the interrupt function RIGHT
 unsigned long totalLRot = 0; // Encoder value from the interrupt function LEFT
@@ -201,12 +204,12 @@ void SM_tick()
         motorRS = 100;
         break;
     case STRAIGHT_MAINTAIN:             //straight with left
-        motorLS = 65;
-        motorRS = 125;
+        motorLS = 50;
+        motorRS = 140;
         break;
     case TURN_MAINTAIN:                 //left turn
-        motorLS = 65;
-        motorRS = 125;
+        motorLS = 50;
+        motorRS = 140;
         break;
     case SUPER_SPEED:
         motorLS = 248;
@@ -222,6 +225,14 @@ void SM_tick()
     analogWrite(motorL, motorLS);
     Serial.print(">State:");
     Serial.println(currentState);
+    if(currentState == TURN_MAINTAIN)
+        digitalWrite(ledblue, HIGH);
+    else
+        digitalWrite(ledblue, LOW);
+    if(currentState == STRAIGHT_MAINTAIN)
+        digitalWrite(ledyellow, HIGH);
+    else
+        digitalWrite(ledyellow, LOW);
 }
 
 void setup() 
@@ -234,6 +245,8 @@ void setup()
     backServo.attach(6);
     frontServo.write(165);
     backServo.write(5);
+    pinMode(ledblue, OUTPUT);
+    pinMode(ledyellow, OUTPUT);
     pinMode(motorL, OUTPUT);
     pinMode(motorR, OUTPUT);
     pinMode(interruptPinR, INPUT_PULLUP);
@@ -244,12 +257,16 @@ void setup()
     totalRRot = 0;
     setupGyro();
     SM_init();
+    digitalWrite(ledyellow, HIGH);
+    digitalWrite(ledblue, HIGH);
     int buttonValue = digitalRead(button);
     while(buttonValue){
         buttonValue = digitalRead(button);
         Serial.println("waiting");
         delay(100);
     }
+    digitalWrite(ledyellow, LOW);
+    digitalWrite(ledblue, LOW);
     frontServo.write(0);
     backServo.write(170);
     front.calibrateIR();
