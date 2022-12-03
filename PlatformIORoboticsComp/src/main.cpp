@@ -171,8 +171,8 @@ void SM_tick()
     Serial.println(angle);
     int buttonValue = digitalRead(button);
     if(!buttonValue){
-        currentState = STOP;
-        // start = true;
+        // currentState = STOP;
+         start = true;
     }
     // SM Transitions
     switch (currentState)
@@ -180,11 +180,11 @@ void SM_tick()
     case STOP:
         break;
     case WAIT:
-        start = front.start();
+        // start = front.start();
         if(start){
             frontServo.write(165);
             backServo.write(5);
-            delay(200);
+            delay(150);
             currentState = QUICKSTART;
         }
         break;
