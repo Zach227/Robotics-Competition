@@ -5,9 +5,9 @@
 #include <MPU6050_light.h>
 #include <Wire.h>
 
-#define GATE 60
-#define alphaTurn 0.75
-#define UpperAngularSpeed 25
+#define GATE 70
+#define alphaTurn 0.9
+#define UpperAngularSpeed 30
 
 #define alphaNot 0.1
 #define LowerAngularSpeed 10
@@ -15,10 +15,11 @@
 MPU6050 mpu(Wire);  // class constructor for mpu
 
 float getAngle(bool reset){
+  static int pastAngle = mpu.getAngleZ();
   if(reset)
-    mpu.calcOffsets(true, true);
-  float angleZ = mpu.getAngleZ();
-  return angleZ;
+    pastAngle = mpu.getAngleZ();
+  int angleZ = mpu.getAngleZ();
+  return (angleZ - pastAngle);
 }
 
 int turnDetect(){
@@ -42,7 +43,6 @@ int turnDetect(){
 
 int notTurning(){
   mpu.update();
-  float angle = getAngle(false);
   static float angularSpeedZ = 0;
   float raw = mpu.getGyroZ();
   if (raw > -4 && raw - angularSpeedZ < GATE) {
@@ -52,15 +52,10 @@ int notTurning(){
   Serial.println(raw);
   Serial.print(">N Angular Speed: ");
   Serial.println(angularSpeedZ);
-  if(angle > 150){
-    if(angularSpeedZ <= LowerAngularSpeed){
+    if(angularSpeedZ <= LowerAngularSpeed)
       return 1;
-    }
     else
       return 0;
-  }
-  else
-    return 0;
 }
 
 

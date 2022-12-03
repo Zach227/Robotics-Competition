@@ -134,11 +134,12 @@ void SM_tick()
     static unsigned long pastTime = 0;
     static int speedTimer = 0;
     static int start = 0;
-    int turn = turnDetect();
+    static int turn = turnDetect();
     static int notTurn = notTurning();
-    
+    int angle = getAngle(false);
     int buttonValue = digitalRead(button);
     if(!buttonValue){
+        // currentState = STOP;
         start = true;
     }
     // SM Transitions
@@ -169,10 +170,12 @@ void SM_tick()
         notTurn = notTurning();
         if (notTurn){
             speedTimer = millis() - pastTime;
-            if(speedTimer > 1000){
-                pastTime = millis();
+            if(angle > 160){
                 currentState = SUPER_SPEED;
             }
+            else 
+                currentState = STRAIGHT_MAINTAIN;
+            getAngle(true);
         }
         break;
     case SUPER_SPEED:
@@ -193,23 +196,15 @@ void SM_tick()
         break;
     case START:
         motorLS = 70;
-        motorRS = 100;
+        motorRS = 130;
         break;
     case STRAIGHT_MAINTAIN:             //straight with left
-        motorLS = 40;
-        motorRS = 60;
-        // if(checkStall() > UpperSpeedThreshold){
-        //     motorLS = 40;
-        //     motorRS = 60;
-        // }
-        // if(checkStall() < LowerSpeedThreshold){
-        //     motorLS = 60;
-        //     motorRS = 80;
-        // }
+        motorLS = 65;
+        motorRS = 125;
         break;
     case TURN_MAINTAIN:                 //left turn
-        motorLS = 60;
-        motorRS = 120;
+        motorLS = 65;
+        motorRS = 125;
         break;
     case SUPER_SPEED:
         motorLS = 248;
