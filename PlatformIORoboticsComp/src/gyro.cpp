@@ -78,7 +78,7 @@ void setupGyro(void) {
 }
 
 void loopGyro() {
-  mpu.update();  // get new measurements from IMU
+  //mpu.update();  // get new measurements from IMU
 }
 
 

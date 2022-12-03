@@ -1,13 +1,6 @@
 #include <Arduino.h>
-//#include <HCSR04.h>
 #include <gyro.h>
-#include <MPU6050_light.h>
-#include <Wire.h>
 #include <Servo.h>
-
-#define SPEED_MAX_TIME 250
-#define UpperSpeedThreshold 55
-#define LowerSpeedThreshold 10
 
 // Pin Assignments
 const int interruptPinR = 3;
@@ -101,7 +94,7 @@ int checkStall(){
         return averageCount;
     }
     else
-        return UpperSpeedThreshold - 1;
+        return 15 - 1;
 }
 
 void addRotR()
@@ -118,7 +111,6 @@ typedef enum
     WAIT,
     QUICKSTART,
     START,
-    SUPER_SPEED,
     STRAIGHT_MAINTAIN,
     TURN_MAINTAIN,
     STOP
@@ -135,8 +127,6 @@ void SM_init()
 void SM_tick()
 {
     // Read Values
-    static unsigned long pastTime = 0;
-    static int speedTimer = 0;
     static int start = 0;
     int turn = turnDetect();
     int notTurn = notTurning();
@@ -163,24 +153,15 @@ void SM_tick()
     case QUICKSTART: 
         break;
     case START:
-        getAngle(true);
         if (turn)
             currentState = TURN_MAINTAIN;
         break;
     case STRAIGHT_MAINTAIN:
-        getAngle(true);
         if (turn)
             currentState = TURN_MAINTAIN;
         break;
     case TURN_MAINTAIN:
         if (notTurn){
-            currentState = STRAIGHT_MAINTAIN;
-            pastTime = millis();
-        }
-        break;
-    case SUPER_SPEED:
-        speedTimer = millis() - pastTime;
-        if(speedTimer >= SPEED_MAX_TIME){
             currentState = STRAIGHT_MAINTAIN;
         }
         break;
@@ -211,10 +192,6 @@ void SM_tick()
     case TURN_MAINTAIN:                 //left turn
         motorLS = 50;
         motorRS = 140;
-        break;
-    case SUPER_SPEED:
-        motorLS = 248;
-        motorRS = 255;
         break;
     case STOP:
         motorLS = 0;
@@ -249,10 +226,10 @@ void setup()
     pinMode(ledyellow, OUTPUT);
     pinMode(motorL, OUTPUT);
     pinMode(motorR, OUTPUT);
-    pinMode(interruptPinR, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(interruptPinR), addRotR, CHANGE);
-    pinMode(interruptPinL, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(interruptPinL), addRotL, CHANGE);
+    // pinMode(interruptPinR, INPUT_PULLUP);
+    // attachInterrupt(digitalPinToInterrupt(interruptPinR), addRotR, CHANGE);
+    // pinMode(interruptPinL, INPUT_PULLUP);
+    // attachInterrupt(digitalPinToInterrupt(interruptPinL), addRotL, CHANGE);
     totalLRot = 0;
     totalRRot = 0;
     setupGyro();
@@ -275,5 +252,4 @@ void setup()
 
 void loop(){
     SM_tick();
-    loopGyro();
 }
