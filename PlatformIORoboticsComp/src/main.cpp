@@ -8,6 +8,7 @@
 #define SPEED_MAX_TIME 250
 #define UpperSpeedThreshold 55
 #define LowerSpeedThreshold 10
+
 // Pin Assignments
 const int interruptPinR = 3;
 const int interruptPinL = 2;
@@ -21,6 +22,7 @@ const int ledyellow = 8;
 // information for the robot control
 unsigned long totalRRot = 0; // Encoder value from the interrupt function RIGHT
 unsigned long totalLRot = 0; // Encoder value from the interrupt function LEFT
+
 
 int motorLS = 0;
 int motorRS = 0;
@@ -38,7 +40,6 @@ public:
         pinMode(light, OUTPUT);
     }
     int IRBias = 100;
-
     void calibrateIR(){ 
         int bias = 0;
         digitalWrite(light, LOW);
@@ -111,7 +112,6 @@ void addRotL()
 {
     totalLRot += 1;
 }
-
 // Define SM states
 typedef enum
 {
@@ -145,6 +145,7 @@ void SM_tick()
         currentState = STOP;
         //start = true;
     }
+
     // SM Transitions
     switch (currentState)
     {
@@ -220,7 +221,6 @@ void SM_tick()
         motorRS = 0;
         break;
     }
-
     analogWrite(motorR, motorRS);
     analogWrite(motorL, motorLS);
     Serial.print(">State:");
