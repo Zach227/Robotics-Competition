@@ -5,7 +5,7 @@
 #include <Wire.h>
 #include <Servo.h>
 
-#define SPEED_MAX_TIME 200
+#define SPEED_MAX_TIME 250
 #define UpperSpeedThreshold 55
 #define LowerSpeedThreshold 10
 // Pin Assignments
@@ -50,7 +50,7 @@ public:
     } 
 
     int readIR(){
-        //digitalWrite(light, HIGH);
+        digitalWrite(light, LOW);
         int value = analogRead(reciever) - IRBias;
         //Serial.print("IR value");
         //Serial.println(value);
@@ -113,6 +113,7 @@ void addRotL()
 typedef enum
 {
     WAIT,
+    QUICKSTART,
     START,
     SUPER_SPEED,
     STRAIGHT_MAINTAIN,
@@ -139,6 +140,7 @@ void SM_tick()
     int buttonValue = digitalRead(button);
     if(!buttonValue){
         currentState = STOP;
+        //start = true;
     }
     // SM Transitions
     switch (currentState)
@@ -151,31 +153,31 @@ void SM_tick()
             frontServo.write(165);
             backServo.write(5);
             delay(250);
-            currentState = START;
+            currentState = QUICKSTART;
         }
         break;
+    case QUICKSTART: 
+        break;
     case START:
+        getAngle(true);
         if (turn)
             currentState = TURN_MAINTAIN;
         break;
     case STRAIGHT_MAINTAIN:
+        getAngle(true);
         if (turn)
             currentState = TURN_MAINTAIN;
         break;
     case TURN_MAINTAIN:
         if (notTurn){
-            speedTimer = millis() - pastTime;
-            if(speedTimer > 1000){
-                pastTime = millis();
-                //currentState = SUPER_SPEED;
-            }
+            currentState = STRAIGHT_MAINTAIN;
+            pastTime = millis();
         }
         break;
     case SUPER_SPEED:
         speedTimer = millis() - pastTime;
         if(speedTimer >= SPEED_MAX_TIME){
             currentState = STRAIGHT_MAINTAIN;
-            pastTime = millis();
         }
         break;
     }
@@ -187,25 +189,24 @@ void SM_tick()
         motorLS = 0;
         motorRS = 0;
         break;
+    case QUICKSTART:
+        motorLS = 235;
+        motorRS = 255;
+        analogWrite(motorR, motorRS);
+        analogWrite(motorL, motorLS);
+        delay(300);
+        currentState = START;
     case START:
-        motorLS = 80;
-        motorRS = 110;
+        motorLS = 45;
+        motorRS = 100;
         break;
     case STRAIGHT_MAINTAIN:             //straight with left
-        motorLS = 40;
-        motorRS = 60;
-        // if(checkStall() > UpperSpeedThreshold){
-        //     motorLS = 40;
-        //     motorRS = 60;
-        // }
-        // if(checkStall() < LowerSpeedThreshold){
-        //     motorLS = 60;
-        //     motorRS = 80;
-        // }
+        motorLS = 65;
+        motorRS = 125;
         break;
     case TURN_MAINTAIN:                 //left turn
-        motorLS = 60;
-        motorRS = 120;
+        motorLS = 65;
+        motorRS = 125;
         break;
     case SUPER_SPEED:
         motorLS = 248;
@@ -259,4 +260,3 @@ void loop(){
     SM_tick();
     loopGyro();
 }
-
