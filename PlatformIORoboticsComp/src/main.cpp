@@ -5,7 +5,7 @@
 #include <Wire.h>
 #include <Servo.h>
 
-#define SPEED_MAX_TIME 200
+#define SPEED_MAX_TIME 100
 #define UpperSpeedThreshold 55
 #define LowerSpeedThreshold 10
 // Pin Assignments
@@ -79,7 +79,33 @@ int checkStall(){
   static unsigned long nowTime = 0;
   static unsigned long pastRRot = 0;
   static unsigned long pastLRot = 0;
-  static unsigned long freqSpeed = 200;
+  static unsigned long freqSpeed = 100;
+
+  if (setTime == false){        //only will happen on the initialization of the function
+        nowTime = millis();
+        pastRRot = totalRRot;
+        pastLRot = totalLRot;
+        setTime = true;
+  }
+   if ((millis() - nowTime)>= freqSpeed){
+        int encoderCountL = (totalLRot - pastLRot);
+        int encoderCountR = (totalRRot - pastRRot);
+        setTime = false;
+        int averageCount  = (encoderCountL + encoderCountR)/2;
+        Serial.print(">Average Count:");
+        Serial.println(averageCount);
+        return averageCount;
+    }
+    else
+        return UpperSpeedThreshold - 1;
+}
+
+int differenceCount(){
+  static bool setTime = false;
+  static unsigned long nowTime = 0;
+  static unsigned long pastRRot = 0;
+  static unsigned long pastLRot = 0;
+  static unsigned long freqSpeed = 100;
 
   if (setTime == false){        //only will happen on the initialization of the function
         nowTime = millis();
@@ -134,13 +160,15 @@ void SM_tick()
     static unsigned long pastTime = 0;
     static int speedTimer = 0;
     static int start = 0;
-    static int turn = turnDetect();
-    static int notTurn = notTurning();
-    int angle = getAngle(false);
+    int turn = turnDetect();
+    int notTurn = notTurning();
+    float angle = getAngle(0);
+    Serial.print(">Angle: ");
+    Serial.println(angle);
     int buttonValue = digitalRead(button);
     if(!buttonValue){
-        // currentState = STOP;
-        start = true;
+        currentState = STOP;
+        // start = true;
     }
     // SM Transitions
     switch (currentState)
@@ -148,7 +176,7 @@ void SM_tick()
     case STOP:
         break;
     case WAIT:
-        //start = front.start();
+        start = front.start();
         if(start){
             frontServo.write(165);
             backServo.write(5);
@@ -162,27 +190,24 @@ void SM_tick()
             currentState = TURN_MAINTAIN;
         break;
     case STRAIGHT_MAINTAIN:
-        turn = turnDetect();
         if (turn)
             currentState = TURN_MAINTAIN;
         break;
     case TURN_MAINTAIN:
-        notTurn = notTurning();
         if (notTurn){
-            speedTimer = millis() - pastTime;
-            if(angle > 160){
+            if(angle > 150){
                 currentState = SUPER_SPEED;
+                pastTime = millis();
             }
             else 
                 currentState = STRAIGHT_MAINTAIN;
-            getAngle(true);
+            angle = getAngle(2);
         }
         break;
     case SUPER_SPEED:
         speedTimer = millis() - pastTime;
         if(speedTimer >= SPEED_MAX_TIME){
             currentState = STRAIGHT_MAINTAIN;
-            pastTime = millis();
         }
         break;
     }
@@ -199,16 +224,16 @@ void SM_tick()
         motorRS = 130;
         break;
     case STRAIGHT_MAINTAIN:             //straight with left
-        motorLS = 65;
-        motorRS = 125;
+        motorLS = 55;
+        motorRS = 100;
         break;
     case TURN_MAINTAIN:                 //left turn
-        motorLS = 65;
-        motorRS = 125;
+        motorLS = 60;
+        motorRS = 130;
         break;
     case SUPER_SPEED:
-        motorLS = 248;
-        motorRS = 255;
+        motorLS = 200;
+        motorRS = 220;
         break;
     case STOP:
         motorLS = 0;

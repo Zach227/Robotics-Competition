@@ -12,7 +12,7 @@ int turnDetect();
 
 int notTurning();
 
-float getAngle(bool reset);
+float getAngle(int reset);
 
 
 #endif

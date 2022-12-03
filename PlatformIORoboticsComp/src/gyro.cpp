@@ -5,19 +5,21 @@
 #include <MPU6050_light.h>
 #include <Wire.h>
 
-#define GATE 70
-#define alphaTurn 0.9
-#define UpperAngularSpeed 30
+#define GATE 100
+#define alphaTurn 0.8
+#define UpperAngularSpeed 25
 
-#define alphaNot 0.1
-#define LowerAngularSpeed 10
+// #define alphaNot 0.1
+#define LowerAngularSpeed 5
 
 MPU6050 mpu(Wire);  // class constructor for mpu
 
-float getAngle(bool reset){
+float getAngle(int reset){
   static int pastAngle = mpu.getAngleZ();
-  if(reset)
+  if(reset == 2){
     pastAngle = mpu.getAngleZ();
+    Serial.println("Reset");
+  }
   int angleZ = mpu.getAngleZ();
   return (angleZ - pastAngle);
 }
@@ -45,8 +47,8 @@ int notTurning(){
   mpu.update();
   static float angularSpeedZ = 0;
   float raw = mpu.getGyroZ();
-  if (raw > -4 && raw - angularSpeedZ < GATE) {
-      angularSpeedZ = (angularSpeedZ*alphaNot) + raw*(1-alphaNot);
+  if (raw > -4) {
+      angularSpeedZ = raw;
   }
   Serial.print(">N raw: ");
   Serial.println(raw);
@@ -67,6 +69,7 @@ void setupGyro(void) {
   mpu.begin();
   delay(1000);
   mpu.calcOffsets(true,true);  // auto calibrate gyro and accels
+  getAngle(true);
     // IMU must be stationary and level during calibration
 }
 
