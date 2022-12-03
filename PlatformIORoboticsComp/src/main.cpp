@@ -3,24 +3,27 @@
 #include <gyro.h>
 #include <MPU6050_light.h>
 #include <Wire.h>
-#define SPEED_MAX_TIME 10
+#include <Servo.h>
+
+#define SPEED_MAX_TIME 100
+#define UpperSpeedThreshold 55
+#define LowerSpeedThreshold 10
 // Pin Assignments
 const int interruptPinR = 3;
 const int interruptPinL = 2;
-const int motorL = 10;
+const int motorL = 5;
 const int motorR = 11;
-// const int IRFront = A6;
-// const int IRlightF = 5;
-// const int IRBack = A7;
-// const int IRlightB = 6;
 const int button = A1;
+
+const int ledblue = 7;
+const int ledyellow = 8;
 
 // information for the robot control
 unsigned long totalRRot = 0; // Encoder value from the interrupt function RIGHT
 unsigned long totalLRot = 0; // Encoder value from the interrupt function LEFT
 
-int motorLS = 100;
-int motorRS = 100;
+int motorLS = 0;
+int motorRS = 0;
 
 class IRLight
 {
@@ -50,22 +53,36 @@ public:
     } 
 
     int readIR(){
+        digitalWrite(light, LOW);
         int value = analogRead(reciever) - IRBias;
+        //Serial.print("IR value");
+        //Serial.println(value);
         return value;
+    }
+    int start(){
+        digitalWrite(light, LOW);
+        if(readIR() > 100){
+            Serial.println("go");
+            return 1;
+        }
+        else
+            return 0;
+        //digitalWrite(light, HIGH);
     }
 
 };
-IRLight front(A6,5);
-IRLight back(A7, 6);
+IRLight front(A6,7);
+//IRLight back(A7, 6);
 
-bool checkStall(){
+Servo frontServo;
+Servo backServo;
+
+int checkStall(){
   static bool setTime = false;
   static unsigned long nowTime = 0;
   static unsigned long pastRRot = 0;
   static unsigned long pastLRot = 0;
-  static int triggerTime = 0; 
-  static unsigned long freqSpeed = 200;
-  static int checkStallCount = 1;
+  static unsigned long freqSpeed = 100;
 
   if (setTime == false){        //only will happen on the initialization of the function
         nowTime = millis();
@@ -76,34 +93,40 @@ bool checkStall(){
    if ((millis() - nowTime)>= freqSpeed){
         int encoderCountL = (totalLRot - pastLRot);
         int encoderCountR = (totalRRot - pastRRot);
-        /*Serial.print("right: ");
-        Serial.println(encoderCountR);
-        Serial.print("left: ");
-        Serial.println(encoderCountL);
-        Serial.print("time since trigger");
-        Serial.println(millis() - triggerTime);*/
-        if(millis() - triggerTime >= 1000){;
-          setTime = false;
-          if (encoderCountL <= checkStallCount){
-            triggerTime = millis();
-            Serial.println("triggered L");
-            return true;
-          }
-          else if(encoderCountR <= checkStallCount){
-            triggerTime = millis();
-            Serial.println("triggered R");
-            return true;
-          }
-          else{
-            return false;
-          }
-        }
-        else
-            return false;
+        setTime = false;
+        int averageCount  = (encoderCountL + encoderCountR)/2;
+        Serial.print(">Average Count:");
+        Serial.println(averageCount);
+        return averageCount;
     }
-    else{
-        return false;
+    else
+        return UpperSpeedThreshold - 1;
+}
+
+int differenceCount(){
+  static bool setTime = false;
+  static unsigned long nowTime = 0;
+  static unsigned long pastRRot = 0;
+  static unsigned long pastLRot = 0;
+  static unsigned long freqSpeed = 100;
+
+  if (setTime == false){        //only will happen on the initialization of the function
+        nowTime = millis();
+        pastRRot = totalRRot;
+        pastLRot = totalLRot;
+        setTime = true;
+  }
+   if ((millis() - nowTime)>= freqSpeed){
+        int encoderCountL = (totalLRot - pastLRot);
+        int encoderCountR = (totalRRot - pastRRot);
+        setTime = false;
+        int averageCount  = (encoderCountL + encoderCountR)/2;
+        Serial.print(">Average Count:");
+        Serial.println(averageCount);
+        return averageCount;
     }
+    else
+        return UpperSpeedThreshold - 1;
 }
 
 void addRotR()
@@ -115,41 +138,16 @@ void addRotL()
     totalLRot += 1;
 }
 
-void setup()
-{
-    Serial.begin(9600);
-    // pin modes and interrupts
-    pinMode(button, INPUT_PULLUP);      //should be 0V on press and 5v on no press
-    front.setup();
-    back.setup();
-    pinMode(motorL, OUTPUT);
-    pinMode(motorR, OUTPUT);
-    pinMode(interruptPinR, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(interruptPinR), addRotR, CHANGE);
-    pinMode(interruptPinL, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(interruptPinL), addRotL, CHANGE);
-    delay(2000);
-    Serial.println("Setup Complete");
-    totalLRot = 0;
-    totalRRot = 0;
-    setupGyro();
-    int buttonValue = digitalRead(button);
-    while(buttonValue){
-        buttonValue = digitalRead(button);
-        Serial.println("waiting");
-        delay(100);
-    }
-    front.calibrateIR();
-    back.calibrateIR();
-}
-
 // Define SM states
 typedef enum
 {
+    WAIT,
+    QUICKSTART,
     START,
+    SUPER_SPEED,
     STRAIGHT_MAINTAIN,
     TURN_MAINTAIN,
-    SUPER_SPEED,
+    STOP
 } sm_state_t;
 
 // SM Variables
@@ -157,42 +155,64 @@ sm_state_t currentState;
 
 void SM_init()
 {
-    currentState = GO_TO_WALL;
+    currentState = WAIT;
 }
 
 void SM_tick()
 {
     // Read Values
+    static unsigned long pastTime = 0;
     static int speedTimer = 0;
+    static int start = 0;
     int turn = turnDetect();
-    float angle = getAngle(false);
-    static unsigned long pastLRotation = 0;
-    int rotationLDifference = totalLRot - pastLRotation;
-    //Serial.println(turn);
+    int notTurn = notTurning();
+    float angle = getAngle(0);
+    Serial.print(">Angle: ");
+    Serial.println(angle);
+    int buttonValue = digitalRead(button);
+    if(!buttonValue){
+        currentState = STOP;
+        // start = true;
+    }
     // SM Transitions
     switch (currentState)
     {
+    case STOP:
+        break;
+    case WAIT:
+        start = front.start();
+        if(start){
+            frontServo.write(165);
+            backServo.write(5);
+            delay(250);
+            currentState = QUICKSTART;
+        }
+        break;
+    case QUICKSTART: 
+        break;
     case START:
-        currentState = GO_TO_WALL;
+        if (turn)
+            currentState = TURN_MAINTAIN;
         break;
     case STRAIGHT_MAINTAIN:
-        if(angle >= 10)//track long length is 275 rotations
-            currentState = TURN_MANTAIN;
+        if (turn)
+            currentState = TURN_MAINTAIN;
         break;
     case TURN_MAINTAIN:
-        if (angle >= 160){
-            currentState = TURN_FINISH;
-        }
-        if (!turn){
-            currentState = STRAIGHT_MAINTAIN;
-            pastLRotation = totalLRot;
-            getAngle(true);
+        if (notTurn){
+            if(angle > 150){
+                currentState = SUPER_SPEED;
+                pastTime = millis();
+            }
+            else 
+                currentState = STRAIGHT_MAINTAIN;
+            angle = getAngle(2);
         }
         break;
     case SUPER_SPEED:
+        speedTimer = millis() - pastTime;
         if(speedTimer >= SPEED_MAX_TIME){
             currentState = STRAIGHT_MAINTAIN;
-            speedTimer = 0;
         }
         break;
     }
@@ -200,31 +220,92 @@ void SM_tick()
     // SM Actions
     switch (currentState)
     {
+    case WAIT:
+        motorLS = 0;
+        motorRS = 0;
+        break;
+    case QUICKSTART:
+        motorLS = 235;
+        motorRS = 255;
+        analogWrite(motorR, motorRS);
+        analogWrite(motorL, motorLS);
+        delay(300);
+        currentState = START;
     case START:
+        motorLS = 45;
+        motorRS = 100;
         break;
     case STRAIGHT_MAINTAIN:             //straight with left
-        motorLS = 40;
-        motorRS = 90;
+        motorLS = 50;
+        motorRS = 140;
         break;
     case TURN_MAINTAIN:                 //left turn
-        motorLS = 40;
-        motorRS = 110;
+        motorLS = 50;
+        motorRS = 140;
         break;
     case SUPER_SPEED:
-        motorLS = 220;
-        motorRS = 255;
-        speedTimer ++;
+        motorLS = 200;
+        motorRS = 220;
+        break;
+    case STOP:
+        motorLS = 0;
+        motorRS = 0;
         break;
     }
+
     analogWrite(motorR, motorRS);
     analogWrite(motorL, motorLS);
+    Serial.print(">State:");
     Serial.println(currentState);
+    if(currentState == TURN_MAINTAIN)
+        digitalWrite(ledblue, HIGH);
+    else
+        digitalWrite(ledblue, LOW);
+    if(currentState == STRAIGHT_MAINTAIN)
+        digitalWrite(ledyellow, HIGH);
+    else
+        digitalWrite(ledyellow, LOW);
+}
+
+void setup() 
+{
+    Serial.begin(9600);
+    // pin modes and interrupts
+    pinMode(button, INPUT_PULLUP);      //should be 0V on press and 5v on no press
+    front.setup();
+    frontServo.attach(9);
+    backServo.attach(6);
+    frontServo.write(165);
+    backServo.write(5);
+    pinMode(ledblue, OUTPUT);
+    pinMode(ledyellow, OUTPUT);
+    pinMode(motorL, OUTPUT);
+    pinMode(motorR, OUTPUT);
+    pinMode(interruptPinR, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(interruptPinR), addRotR, CHANGE);
+    pinMode(interruptPinL, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(interruptPinL), addRotL, CHANGE);
+    totalLRot = 0;
+    totalRRot = 0;
+    setupGyro();
+    SM_init();
+    digitalWrite(ledyellow, HIGH);
+    digitalWrite(ledblue, HIGH);
+    int buttonValue = digitalRead(button);
+    while(buttonValue){
+        buttonValue = digitalRead(button);
+        Serial.println("waiting");
+        delay(100);
+    }
+    digitalWrite(ledyellow, LOW);
+    digitalWrite(ledblue, LOW);
+    frontServo.write(0);
+    backServo.write(170);
+    front.calibrateIR();
+    Serial.println("Setup Complete");
 }
 
 void loop(){
     SM_tick();
-    if(checkStall()){
-        /*back up and try again*/
-    }
     loopGyro();
 }
