@@ -6,7 +6,7 @@
 #include <Wire.h>
 
 #define GATE 100
-#define alphaTurn 0.75
+#define alphaTurn 0.6
 #define UpperAngularSpeed 15
 
 #define alphaNot 0.1
@@ -26,7 +26,7 @@ int turnDetect(){
   mpu.update();
   static float angularSpeedZ = 0;
   float raw = mpu.getGyroZ();
-  if (raw > -2 && raw - angularSpeedZ < GATE) {
+  if (raw > -4) {
       angularSpeedZ = (angularSpeedZ*alphaTurn) + raw*(1-alphaTurn);
   }
   Serial.print(">raw: ");
@@ -45,7 +45,7 @@ int notTurning(){
   static float angularSpeedZ = 0;
   float angle = getAngle(false);
   float raw = mpu.getGyroZ();
-  if (raw > -2 && raw - angularSpeedZ < GATE) {
+  if (raw > -10) {
       angularSpeedZ = (angularSpeedZ*alphaNot) + raw*(1-alphaNot);
   }
   Serial.print(">N raw: ");
