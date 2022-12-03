@@ -184,7 +184,7 @@ void SM_tick()
         if(start){
             frontServo.write(165);
             backServo.write(5);
-            delay(250);
+            delay(200);
             currentState = QUICKSTART;
         }
         break;
@@ -236,12 +236,12 @@ void SM_tick()
         motorRS = 100;
         break;
     case STRAIGHT_MAINTAIN:             //straight with left
-        motorLS = 50;
-        motorRS = 140;
+        motorLS = 40;
+        motorRS = 135;
         break;
     case TURN_MAINTAIN:                 //left turn
-        motorLS = 50;
-        motorRS = 140;
+        motorLS = 40;
+        motorRS = 150;
         break;
     case SUPER_SPEED:
         motorLS = 200;
@@ -299,8 +299,8 @@ void setup()
     }
     digitalWrite(ledyellow, LOW);
     digitalWrite(ledblue, LOW);
-    frontServo.write(0);
-    backServo.write(170);
+    frontServo.write(20);
+    backServo.write(140);
     front.calibrateIR();
     Serial.println("Setup Complete");
 }

@@ -7,10 +7,10 @@
 
 #define GATE 100
 #define alphaTurn 0.8
-#define UpperAngularSpeed 25
+#define UpperAngularSpeed 50
 
 // #define alphaNot 0.1
-#define LowerAngularSpeed 5
+#define LowerAngularSpeed 30
 
 MPU6050 mpu(Wire);  // class constructor for mpu
 
@@ -26,17 +26,16 @@ float getAngle(int reset){
 
 int turnDetect(){
   mpu.update();
-  static float angularSpeedZ = 0;
+  static float angularSpeed = 0;
   float raw = mpu.getGyroZ();
-  if (raw > -4 && raw - angularSpeedZ < GATE) {
-      angularSpeedZ = (angularSpeedZ*alphaTurn) + raw*(1-alphaTurn);
+  if (raw > -4) {
+      angularSpeed = (angularSpeed*alphaTurn) + raw*(1-alphaTurn);
   }
   Serial.print(">raw: ");
   Serial.println(raw);
   Serial.print(">Angular Speed: ");
-  Serial.println(angularSpeedZ);
-  getAngle(true);
-  if(angularSpeedZ >= UpperAngularSpeed){
+  Serial.println(angularSpeed);
+  if(angularSpeed >= UpperAngularSpeed){
     return 1;
   }
   else
@@ -47,7 +46,7 @@ int notTurning(){
   mpu.update();
   static float angularSpeedZ = 0;
   float raw = mpu.getGyroZ();
-  if (raw > -4) {
+  if (raw > -12) {
       angularSpeedZ = raw;
   }
   Serial.print(">N raw: ");
@@ -69,6 +68,8 @@ void setupGyro(void) {
   mpu.begin();
   delay(1000);
   mpu.calcOffsets(true,true);  // auto calibrate gyro and accels
+  delay(1000);
+  
   getAngle(2);
     // IMU must be stationary and level during calibration
 }
