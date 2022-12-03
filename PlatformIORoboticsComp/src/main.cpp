@@ -6,8 +6,8 @@
 #include <Servo.h>
 
 #define SPEED_MAX_TIME 100
-#define UpperSpeedThreshold 55
-#define LowerSpeedThreshold 10
+#define UpperSpeedThreshold 8
+#define LowerSpeedThreshold 3
 // Pin Assignments
 const int interruptPinR = 3;
 const int interruptPinL = 2;
@@ -106,6 +106,7 @@ int differenceCount(){
   static unsigned long pastRRot = 0;
   static unsigned long pastLRot = 0;
   static unsigned long freqSpeed = 100;
+  static int averageCount = 0;
 
   if (setTime == false){        //only will happen on the initialization of the function
         nowTime = millis();
@@ -117,13 +118,31 @@ int differenceCount(){
         int encoderCountL = (totalLRot - pastLRot);
         int encoderCountR = (totalRRot - pastRRot);
         setTime = false;
-        int averageCount  = (encoderCountL + encoderCountR)/2;
+        averageCount  = encoderCountR - encoderCountL;
         Serial.print(">Average Count:");
         Serial.println(averageCount);
         return averageCount;
     }
     else
-        return UpperSpeedThreshold - 1;
+        return averageCount;
+}
+
+int ETurn(){
+    int difference = differenceCount();
+    if(difference >= UpperSpeedThreshold){
+        return 1;
+    }
+    else
+        return 0;
+}
+
+int NotETurn(){
+    int difference = differenceCount();
+    if(difference <= LowerSpeedThreshold){
+        return 1;
+    }
+    else
+        return 0;
 }
 
 void addRotR()
@@ -160,8 +179,12 @@ void SM_tick()
     static unsigned long pastTime = 0;
     static int speedTimer = 0;
     static int start = 0;
-    int turn = turnDetect();
-    int notTurn = notTurning();
+    int turn = ETurn();
+    int notTurn = NotETurn();
+    Serial.print(">turn: ");
+    Serial.println(turn);
+    Serial.print(">NOT turn: ");
+    Serial.println(notTurn);
     float angle = getAngle(0);
     Serial.print(">Angle: ");
     Serial.println(angle);
