@@ -3,9 +3,9 @@
 #include <gyro.h>
 #include <Servo.h>
 
-#define SPEED_MAX_TIME 100
-#define UpperSpeedThreshold 10
-#define LowerSpeedThreshold 2
+#define SPEED_MAX_TIME 75
+#define UpperSpeedThreshold 5
+#define LowerSpeedThreshold 3
 // Pin Assignments
 const int interruptPinR = 3;
 const int interruptPinL = 2;
@@ -106,7 +106,7 @@ int differenceCount(){
   static unsigned long nowTime = 0;
   static unsigned long pastRRot = 0;
   static unsigned long pastLRot = 0;
-  static unsigned long freqSpeed = 100;
+  static unsigned long freqSpeed = 50;
   static int averageCount = 0;
 
   if (setTime == false){        //only will happen on the initialization of the function
@@ -186,6 +186,10 @@ void SM_tick()
     float angle = getAngle(0);
     Serial.print(">Angle: ");
     Serial.println(angle);
+    Serial.print(">turn: ");
+    Serial.println(turn);
+    Serial.print(">NOT turn: ");
+    Serial.println(notTurn);
     int buttonValue = digitalRead(button);
     if(!buttonValue){
         currentState = STOP;
@@ -249,20 +253,20 @@ void SM_tick()
         delay(300);
         currentState = START;
     case START:
-        motorLS = 45;
-        motorRS = 100;
+        motorLS = 60;
+        motorRS = 130;
         break;
     case STRAIGHT_MAINTAIN:             //straight with left
         motorLS = 40;
-        motorRS = 135;
+        motorRS = 120;
         break;
     case TURN_MAINTAIN:                 //left turn
-        motorLS = 40;
-        motorRS = 150;
+        motorLS = 60;
+        motorRS = 155;
         break;
     case SUPER_SPEED:
-        motorLS = 200;
-        motorRS = 220;
+        motorLS = 220;
+        motorRS = 250;
         break;
     case STOP:
         motorLS = 0;
@@ -316,7 +320,7 @@ void setup()
     }
     digitalWrite(ledyellow, LOW);
     digitalWrite(ledblue, LOW);
-    frontServo.write(20);
+    frontServo.write(35);
     backServo.write(140);
     front.calibrateIR();
     Serial.println("Setup Complete");
